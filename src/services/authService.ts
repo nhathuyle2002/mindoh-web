@@ -15,17 +15,26 @@ export const authService = {
   },
 
   async getUser(userId: number): Promise<User> {
-    const response = await apiClient.get<User>(`/users/${userId}`);
+    const token = localStorage.getItem('token');
+    const response = await apiClient.get<User>(`/users/${userId}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
     return response.data;
   },
 
   async updateUser(userId: number, userData: Partial<User>): Promise<User> {
-    const response = await apiClient.put<User>(`/users/${userId}`, userData);
+    const token = localStorage.getItem('token');
+    const response = await apiClient.put<User>(`/users/${userId}`, userData, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
     return response.data;
   },
 
   async deleteUser(userId: number): Promise<void> {
-    await apiClient.delete(`/users/${userId}`);
+    const token = localStorage.getItem('token');
+    await apiClient.delete(`/users/${userId}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
   },
 
   logout() {

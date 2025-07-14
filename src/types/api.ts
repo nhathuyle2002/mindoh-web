@@ -23,29 +23,45 @@ export interface LoginResponse {
   user: User;
 }
 
+export type ExpenseKind = 'expense' | 'income';
+export type ExpenseType = 'food' | 'salary' | 'transport' | 'entertainment' | 'other';
+
 export interface Expense {
   id: number;
   user_id: number;
   amount: number;
+  currency: string;
+  kind: ExpenseKind;
+  type: ExpenseType;
   description: string;
-  category: string;
   date: string;
   created_at: string;
   updated_at: string;
 }
 
 export interface ExpenseRequest {
+  user_id: number;
   amount: number;
+  currency: string;
+  kind: ExpenseKind;
+  type: ExpenseType;
   description: string;
-  category: string;
   date: string;
 }
 
+export interface ExpenseFilter {
+  user_id?: number;
+  kind?: string;
+  type?: string;
+  from?: string;
+  to?: string;
+}
+
 export interface ExpenseSummary {
-  date: string;
-  total_amount: number;
-  expense_count: number;
   expenses: Expense[];
+  total_by_kind: Record<ExpenseKind, number>;
+  total_by_type: Record<ExpenseType, number>;
+  total_amount: number;
 }
 
 export interface ApiError {

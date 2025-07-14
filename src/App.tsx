@@ -1,4 +1,3 @@
-import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider, CssBaseline, createTheme } from '@mui/material';
 import { AuthProvider } from './contexts/AuthContext';
