@@ -24,7 +24,6 @@ export interface LoginResponse {
 }
 
 export type ExpenseKind = 'expense' | 'income';
-export type ExpenseType = 'food' | 'salary' | 'transport' | 'entertainment' | 'other';
 
 export interface Expense {
   id: number;
@@ -32,7 +31,7 @@ export interface Expense {
   amount: number;
   currency: string;
   kind: ExpenseKind;
-  type: ExpenseType;
+  type: string;
   description: string;
   date: string;
   created_at: string;
@@ -44,7 +43,7 @@ export interface ExpenseRequest {
   amount: number;
   currency: string;
   kind: ExpenseKind;
-  type: ExpenseType;
+  type: string;
   description: string;
   date: string;
 }
@@ -60,7 +59,7 @@ export interface ExpenseFilter {
 export interface ExpenseSummary {
   expenses: Expense[];
   total_by_kind: Record<ExpenseKind, number>;
-  total_by_type: Record<ExpenseType, number>;
+  total_by_type: Record<string, number>;
   total_amount: number;
 }
 

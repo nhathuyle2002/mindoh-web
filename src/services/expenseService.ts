@@ -5,17 +5,15 @@ function getAuthToken(): string | null {
   return localStorage.getItem('token');
 }
 
-import type { Expense, ExpenseRequest, ExpenseKind, ExpenseType } from '../types/api';
+import type { Expense, ExpenseRequest, ExpenseKind } from '../types/api';
 
 // Define a type for the filters used in getExpenses
 export type ExpenseFilter = {
   user_id?: number;
   kind?: ExpenseKind;
-  type?: ExpenseType;
+  type?: string;
   from?: string;
   to?: string;
-  limit?: number;
-  offset?: number;
 };
 
 export const expenseService = {

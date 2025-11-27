@@ -13,10 +13,9 @@ import {
 import { LocalizationProvider, DatePicker } from '@mui/x-date-pickers';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { expenseService } from '../services/expenseService';
-import type { ExpenseRequest, ExpenseKind, ExpenseType } from '../types/api';
+import type { ExpenseRequest, ExpenseKind } from '../types/api';
 
 const kinds: ExpenseKind[] = ['expense', 'income'];
-const types: ExpenseType[] = ['food', 'salary', 'transport', 'entertainment', 'other'];
 const currencies = ['USD', 'EUR', 'VND'];
 
 interface AddExpenseProps {
@@ -43,9 +42,9 @@ const AddExpense: React.FC<AddExpenseProps> = ({ onExpenseAdded }) => {
     amount: 0,
     description: '',
     kind: 'expense',
-    type: 'food',
+    type: '',
     currency: 'USD',
-    date: new Date().toISOString(), // Default to ISO string with time
+    date: new Date().toISOString(),
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -71,7 +70,7 @@ const AddExpense: React.FC<AddExpenseProps> = ({ onExpenseAdded }) => {
         amount: 0,
         description: '',
         kind: 'expense',
-        type: 'food',
+        type: '',
         currency: 'USD',
         date: new Date().toISOString(),
       });
@@ -101,21 +100,21 @@ const AddExpense: React.FC<AddExpenseProps> = ({ onExpenseAdded }) => {
 
   return (
     <Container maxWidth="md">
-      <Paper elevation={3} sx={{ p: 4, mt: 4 }}>
-        <Typography variant="h5" gutterBottom>
-          Add New Expense
+      <Paper elevation={0} sx={{ p: 4 }}>
+        <Typography variant="h5" gutterBottom fontWeight={600} mb={3}>
+          Add New Transaction
         </Typography>
         {error && (
-          <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>
+          <Alert severity="error" sx={{ mb: 2 }} variant="filled">{error}</Alert>
         )}
         {success && (
-          <Alert severity="success" sx={{ mb: 2 }}>Expense added successfully!</Alert>
+          <Alert severity="success" sx={{ mb: 2 }} variant="filled">Transaction added successfully!</Alert>
         )}
         <Box component="form" onSubmit={handleSubmit}>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <Box sx={{ display: 'flex', gap: 2 }}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+            <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
               <TextField
-                fullWidth
+                sx={{ flex: '1 1 200px' }}
                 label="Amount"
                 type="number"
                 value={formData.amount || ''}
@@ -125,37 +124,7 @@ const AddExpense: React.FC<AddExpenseProps> = ({ onExpenseAdded }) => {
                 disabled={loading}
               />
               <TextField
-                fullWidth
-                select
-                label="Kind"
-                value={formData.kind}
-                onChange={(e) => handleChange('kind', e.target.value)}
-                required
-                disabled={loading}
-              >
-                {kinds.map((option) => (
-                  <MenuItem key={option} value={option}>
-                    {option}
-                  </MenuItem>
-                ))}
-              </TextField>
-              <TextField
-                fullWidth
-                select
-                label="Type"
-                value={formData.type}
-                onChange={(e) => handleChange('type', e.target.value)}
-                required
-                disabled={loading}
-              >
-                {types.map((option) => (
-                  <MenuItem key={option} value={option}>
-                    {option}
-                  </MenuItem>
-                ))}
-              </TextField>
-              <TextField
-                fullWidth
+                sx={{ flex: '1 1 150px' }}
                 select
                 label="Currency"
                 value={formData.currency}
@@ -169,6 +138,32 @@ const AddExpense: React.FC<AddExpenseProps> = ({ onExpenseAdded }) => {
                   </MenuItem>
                 ))}
               </TextField>
+            </Box>
+            <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+              <TextField
+                sx={{ flex: '1 1 150px' }}
+                select
+                label="Kind"
+                value={formData.kind}
+                onChange={(e) => handleChange('kind', e.target.value)}
+                required
+                disabled={loading}
+              >
+                {kinds.map((option) => (
+                  <MenuItem key={option} value={option}>
+                    {option.charAt(0).toUpperCase() + option.slice(1)}
+                  </MenuItem>
+                ))}
+              </TextField>
+              <TextField
+                sx={{ flex: '1 1 200px' }}
+                label="Type"
+                value={formData.type}
+                onChange={(e) => handleChange('type', e.target.value)}
+                required
+                disabled={loading}
+                placeholder="e.g., food, salary, rent"
+              />
             </Box>
             <TextField
               fullWidth
@@ -202,9 +197,10 @@ const AddExpense: React.FC<AddExpenseProps> = ({ onExpenseAdded }) => {
               variant="contained"
               fullWidth
               disabled={loading}
-              sx={{ mt: 2 }}
+              size="large"
+              sx={{ mt: 1 }}
             >
-              {loading ? <CircularProgress size={24} /> : 'Add Expense'}
+              {loading ? <CircularProgress size={24} /> : 'Add Transaction'}
             </Button>
           </Box>
         </Box>
