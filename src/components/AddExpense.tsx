@@ -9,7 +9,10 @@ import {
   Alert,
   MenuItem,
   CircularProgress,
+  Autocomplete,
+  IconButton,
 } from '@mui/material';
+import { Close } from '@mui/icons-material';
 import { LocalizationProvider, DatePicker } from '@mui/x-date-pickers';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { expenseService } from '../services/expenseService';
@@ -20,9 +23,10 @@ const currencies = ['USD', 'EUR', 'VND'];
 
 interface AddExpenseProps {
   onExpenseAdded?: () => void;
+  onClose?: () => void;
 }
 
-const AddExpense: React.FC<AddExpenseProps> = ({ onExpenseAdded }) => {
+const AddExpense: React.FC<AddExpenseProps> = ({ onExpenseAdded, onClose }) => {
   // Get user from localStorage
   const getUserId = () => {
     try {
@@ -49,10 +53,13 @@ const AddExpense: React.FC<AddExpenseProps> = ({ onExpenseAdded }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [availableTypes, setAvailableTypes] = useState<string[]>([]);
 
   // Update user_id if localStorage changes (e.g., login/logout)
   useEffect(() => {
     setFormData(prev => ({ ...prev, user_id: getUserId() }));
+    // Fetch available types
+    expenseService.getUniqueTypes().then(types => setAvailableTypes(types)).catch(() => {});
     // eslint-disable-next-line
   }, []);
 
@@ -63,7 +70,12 @@ const AddExpense: React.FC<AddExpenseProps> = ({ onExpenseAdded }) => {
     setSuccess(false);
 
     try {
-      await expenseService.createExpense({ ...formData, user_id: getUserId(), date: new Date(formData.date).toISOString() });
+      await expenseService.createExpense({ 
+        ...formData, 
+        user_id: getUserId(), 
+        type: formData.type.trim(),
+        date: new Date(formData.date).toISOString() 
+      });
       setSuccess(true);
       setFormData({
         user_id: getUserId(),
@@ -100,7 +112,17 @@ const AddExpense: React.FC<AddExpenseProps> = ({ onExpenseAdded }) => {
 
   return (
     <Container maxWidth="md">
-      <Paper elevation={0} sx={{ p: 4 }}>
+      <Paper elevation={0} sx={{ p: 4, position: 'relative' }}>
+        <IconButton
+          onClick={onClose}
+          sx={{
+            position: 'absolute',
+            right: 8,
+            top: 8,
+          }}
+        >
+          <Close />
+        </IconButton>
         <Typography variant="h5" gutterBottom fontWeight={600} mb={3}>
           Add New Transaction
         </Typography>
@@ -155,14 +177,23 @@ const AddExpense: React.FC<AddExpenseProps> = ({ onExpenseAdded }) => {
                   </MenuItem>
                 ))}
               </TextField>
-              <TextField
+              <Autocomplete
                 sx={{ flex: '1 1 200px' }}
-                label="Type"
+                freeSolo
+                options={availableTypes}
                 value={formData.type}
-                onChange={(e) => handleChange('type', e.target.value)}
-                required
+                onChange={(_, newValue) => handleChange('type', newValue || '')}
+                onInputChange={(_, newInputValue) => handleChange('type', newInputValue)}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="Type"
+                    placeholder="Select or type new"
+                    required
+                    disabled={loading}
+                  />
+                )}
                 disabled={loading}
-                placeholder="e.g., food, salary, rent"
               />
             </Box>
             <TextField

@@ -35,4 +35,19 @@ export const expenseService = {
     // The backend returns an array of expense objects directly
     return response.data;
   },
+
+  async getUniqueTypes(): Promise<string[]> {
+    const token = getAuthToken();
+    const response = await apiClient.get<Expense[]>('/expenses/', {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    // Extract unique types from all expenses
+    const types = new Set<string>();
+    response.data.forEach(expense => {
+      if (expense.type) {
+        types.add(expense.type);
+      }
+    });
+    return Array.from(types).sort();
+  },
 };
