@@ -16,10 +16,9 @@ import { Close } from '@mui/icons-material';
 import { LocalizationProvider, DatePicker } from '@mui/x-date-pickers';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { expenseService } from '../services/expenseService';
-import type { ExpenseRequest, ExpenseKind } from '../types/api';
-
-const kinds: ExpenseKind[] = ['expense', 'income'];
-const currencies = ['USD', 'EUR', 'VND'];
+import type { ExpenseRequest } from '../types/api';
+import { CURRENCIES } from '../constants/currencies';
+import { EXPENSE_KINDS } from '../constants/expense';
 
 interface AddExpenseProps {
   onExpenseAdded?: () => void;
@@ -47,7 +46,7 @@ const AddExpense: React.FC<AddExpenseProps> = ({ onExpenseAdded, onClose }) => {
     description: '',
     kind: 'expense',
     type: '',
-    currency: 'USD',
+    currency: 'VND',
     date: new Date().toISOString(),
   });
   const [loading, setLoading] = useState(false);
@@ -83,7 +82,7 @@ const AddExpense: React.FC<AddExpenseProps> = ({ onExpenseAdded, onClose }) => {
         description: '',
         kind: 'expense',
         type: '',
-        currency: 'USD',
+        currency: 'VND',
         date: new Date().toISOString(),
       });
       if (onExpenseAdded) {
@@ -154,7 +153,7 @@ const AddExpense: React.FC<AddExpenseProps> = ({ onExpenseAdded, onClose }) => {
                 required
                 disabled={loading}
               >
-                {currencies.map((option) => (
+                {CURRENCIES.map((option) => (
                   <MenuItem key={option} value={option}>
                     {option}
                   </MenuItem>
@@ -171,7 +170,7 @@ const AddExpense: React.FC<AddExpenseProps> = ({ onExpenseAdded, onClose }) => {
                 required
                 disabled={loading}
               >
-                {kinds.map((option) => (
+                {EXPENSE_KINDS.map((option) => (
                   <MenuItem key={option} value={option}>
                     {option.charAt(0).toUpperCase() + option.slice(1)}
                   </MenuItem>

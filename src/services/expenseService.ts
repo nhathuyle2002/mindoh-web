@@ -12,6 +12,7 @@ export type ExpenseFilter = {
   user_id?: number;
   kind?: ExpenseKind;
   type?: string;
+  currency?: string;
   from?: string;
   to?: string;
 };

@@ -46,9 +46,8 @@ import type { ExpenseFilter } from '../services/expenseService';
 import type { Expense, ExpenseKind } from '../types/api';
 import AddExpense from './AddExpense';
 import { useNavigate } from 'react-router-dom';
-
-// Date format constants
-const DATETIME_WITH_TIMEZONE_FORMAT = "yyyy-MM-dd'T'HH:mm:ssXXX";
+import { CURRENCIES, CURRENCY_SYMBOLS } from '../constants/currencies';
+import { DATETIME_WITH_TIMEZONE_FORMAT } from '../constants/expense';
 
 const Dashboard: React.FC = () => {
   const { state } = useAuth();
@@ -64,6 +63,7 @@ const Dashboard: React.FC = () => {
   const [filters, setFilters] = useState<ExpenseFilter>({
     kind: undefined,
     type: undefined,
+    currency: undefined,
     from: undefined,
     to: undefined,
   });
@@ -89,7 +89,7 @@ const Dashboard: React.FC = () => {
   };
 
   useEffect(() => {
-    fetchExpenses(filters);
+    fetchExpenses();
     // Fetch available types
     expenseService.getUniqueTypes().then(types => setAvailableTypes(types)).catch(() => {});
     // eslint-disable-next-line
@@ -110,6 +110,7 @@ const Dashboard: React.FC = () => {
     const cleanFilters: ExpenseFilter = {};
     if (filters.kind) cleanFilters.kind = filters.kind;
     if (filters.type) cleanFilters.type = filters.type;
+    if (filters.currency) cleanFilters.currency = filters.currency;
     if (fromDate) {
       // Set to start of day (00:00:00) in local timezone
       const startOfDay = new Date(fromDate);
@@ -125,6 +126,7 @@ const Dashboard: React.FC = () => {
       cleanFilters.to = format(endOfDay, DATETIME_WITH_TIMEZONE_FORMAT);
     }
     
+    console.log('Applying filters:', cleanFilters);
     fetchExpenses(cleanFilters);
   };
 
@@ -132,6 +134,7 @@ const Dashboard: React.FC = () => {
     setFilters({
       kind: undefined,
       type: undefined,
+      currency: undefined,
       from: undefined,
       to: undefined,
     });
@@ -140,7 +143,7 @@ const Dashboard: React.FC = () => {
     fetchExpenses({});
   };
 
-  const hasActiveFilters = filters.kind || filters.type || fromDate || toDate;
+  const hasActiveFilters = filters.kind || filters.type || filters.currency || fromDate || toDate;
 
   const handleLogout = () => {
     localStorage.removeItem('token');
@@ -149,10 +152,12 @@ const Dashboard: React.FC = () => {
   };
 
   const formatCurrency = (amount: number, currency: string) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: currency,
+    const formatted = new Intl.NumberFormat('en-US', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
     }).format(amount);
+    const symbol = CURRENCY_SYMBOLS[currency] || currency;
+    return `${formatted} ${symbol}`;
   };
 
   const formatDate = (dateString: string) => {
@@ -186,7 +191,15 @@ const Dashboard: React.FC = () => {
     const expense = expenses
       .filter(e => e.kind === 'expense')
       .reduce((sum, e) => sum + e.amount, 0);
-    return { income, expense, balance: income - expense };
+    // Get the most common currency from expenses
+    const currencyCounts = expenses.reduce((acc, e) => {
+      acc[e.currency] = (acc[e.currency] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+    const primaryCurrency = Object.keys(currencyCounts).length > 0
+      ? Object.entries(currencyCounts).sort((a, b) => b[1] - a[1])[0][0]
+      : 'VND';
+    return { income, expense, balance: income - expense, currency: primaryCurrency };
   };
 
   const totals = calculateTotals();
@@ -241,7 +254,7 @@ const Dashboard: React.FC = () => {
                     Total Income
                   </Typography>
                   <Typography variant="h4" fontWeight="bold" sx={{ fontSize: { xs: '1.5rem', md: '2.125rem' } }}>
-                    ${totals.income.toFixed(2)}
+                    {formatCurrency(totals.income, totals.currency)}
                   </Typography>
                 </Box>
                 <Avatar sx={{ bgcolor: 'rgba(255,255,255,0.3)' }}>
@@ -264,7 +277,7 @@ const Dashboard: React.FC = () => {
                     Total Expenses
                   </Typography>
                   <Typography variant="h4" fontWeight="bold" sx={{ fontSize: { xs: '1.5rem', md: '2.125rem' } }}>
-                    ${totals.expense.toFixed(2)}
+                    {formatCurrency(totals.expense, totals.currency)}
                   </Typography>
                 </Box>
                 <Avatar sx={{ bgcolor: 'rgba(255,255,255,0.3)' }}>
@@ -289,7 +302,7 @@ const Dashboard: React.FC = () => {
                     Balance
                   </Typography>
                   <Typography variant="h4" fontWeight="bold" sx={{ fontSize: { xs: '1.5rem', md: '2.125rem' } }}>
-                    ${Math.abs(totals.balance).toFixed(2)}
+                    {formatCurrency(Math.abs(totals.balance), totals.currency)}
                   </Typography>
                   <Typography variant="caption">
                     {totals.balance >= 0 ? 'Surplus' : 'Deficit'}
@@ -358,6 +371,23 @@ const Dashboard: React.FC = () => {
               </TextField>
             </Box>
             <Box flex="1 1 200px" minWidth={{ xs: '100%', sm: '200px' }}>
+              <TextField
+                select
+                fullWidth
+                label="Currency"
+                value={filters.currency || ''}
+                onChange={(e) => handleFilterChange('currency', e.target.value)}
+                size="small"
+              >
+                <MenuItem value="">All</MenuItem>
+                {CURRENCIES.map((currency) => (
+                  <MenuItem key={currency} value={currency}>
+                    {currency}
+                  </MenuItem>
+                ))}
+              </TextField>
+            </Box>
+            <Box flex="1 1 200px" minWidth={{ xs: '100%', sm: '200px' }}>
               <LocalizationProvider dateAdapter={AdapterDateFns}>
                 <DatePicker
                   label="From Date"
@@ -419,7 +449,7 @@ const Dashboard: React.FC = () => {
           <AddExpense 
             onExpenseAdded={() => { 
               handleClose(); 
-              fetchExpenses(filters); 
+              fetchExpenses(); 
             }} 
             onClose={handleClose}
           />
