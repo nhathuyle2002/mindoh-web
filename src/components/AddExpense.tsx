@@ -115,9 +115,6 @@ const AddExpense: React.FC<AddExpenseProps> = ({ onExpenseAdded, onClose }) => {
       <Paper elevation={0} sx={{ 
         p: 4, 
         position: 'relative',
-        borderRadius: 3,
-        background: COLORS.background.paper,
-        boxShadow: BOX_SHADOWS.card,
       }}>
         <IconButton
           onClick={onClose}
@@ -147,13 +144,27 @@ const AddExpense: React.FC<AddExpenseProps> = ({ onExpenseAdded, onClose }) => {
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
             <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
               <TextField
-                sx={{ flex: '1 1 200px' }}
+                sx={{ 
+                  flex: '1 1 200px',
+                  '& input[type=number]::-webkit-inner-spin-button, & input[type=number]::-webkit-outer-spin-button': {
+                    display: 'none',
+                  },
+                  '& input[type=number]': {
+                    MozAppearance: 'textfield',
+                  },
+                }}
                 label="Amount"
                 type="number"
                 value={formData.amount || ''}
-                onChange={(e) => handleChange('amount', parseFloat(e.target.value) || 0)}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  // Allow positive numbers (integers and decimals)
+                  if (value === '' || /^\d*\.?\d*$/.test(value)) {
+                    handleChange('amount', value === '' ? 0 : parseFloat(value) || 0);
+                  }
+                }}
                 required
-                inputProps={{ min: 0, step: 0.01 }}
+                inputProps={{ min: 0 }}
                 disabled={loading}
               />
               <TextField

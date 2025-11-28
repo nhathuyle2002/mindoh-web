@@ -170,7 +170,7 @@ const Dashboard: React.FC = () => {
   }
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', bgcolor: '#f5f5f5' }}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', bgcolor: COLORS.background.main }}>
       <Container maxWidth={false} disableGutters sx={{ mt: 4, mb: 4, flexGrow: 1, px: { xs: 2, sm: 3, md: 4 } }}>
         {/* Filter Section */}
         <Box display="flex" gap={2} mb={2} flexWrap="wrap">
@@ -224,8 +224,19 @@ const Dashboard: React.FC = () => {
         <Add />
       </Fab>
 
-      <Dialog open={open} onClose={handleClose} maxWidth="md" fullWidth>
-        <DialogContent>
+      <Dialog 
+        open={open} 
+        onClose={handleClose} 
+        maxWidth="md" 
+        fullWidth
+        PaperProps={{
+          sx: {
+            boxShadow: 'none',
+            borderRadius: 4,
+          }
+        }}
+      >
+        <DialogContent sx={{ p: 0 }}>
           <AddExpense 
             onExpenseAdded={() => { 
               handleClose(); 
@@ -288,9 +299,6 @@ const Dashboard: React.FC = () => {
               </Typography>
               <Typography variant="h4" fontWeight="bold" sx={{ color: summary.balance >= 0 ? COLORS.income.main : COLORS.expense.main }}>
                 {formatCurrency(Math.abs(summary.balance), summary.currency)}
-              </Typography>
-              <Typography variant="caption" sx={{ color: COLORS.text.quaternary }}>
-                {summary.balance >= 0 ? 'Surplus' : 'Deficit'}
               </Typography>
             </Box>
           </Box>
