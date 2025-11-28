@@ -10,7 +10,6 @@ import {
   Alert,
   TextField,
   MenuItem,
-  IconButton,
   Collapse,
   Button,
   Avatar,
@@ -21,15 +20,12 @@ import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { format } from 'date-fns';
 import { 
   FilterList, 
-  Close, 
   TrendingUp, 
   TrendingDown, 
   AccountBalance,
 } from '@mui/icons-material';
 import { expenseService } from '../services/expenseService';
 import type { ExpenseFilter, ExpenseSummary as ExpenseSummaryType } from '../services/expenseService';
-import type { ExpenseKind } from '../types/api';
-import { useNavigate } from 'react-router-dom';
 import { CURRENCIES, CURRENCY_SYMBOLS } from '../constants/currencies';
 import { DATETIME_WITH_TIMEZONE_FORMAT, EXPENSE_KINDS } from '../constants/expense';
 
@@ -41,7 +37,6 @@ const Summary: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(false);
   const [availableTypes, setAvailableTypes] = useState<string[]>([]);
-  const navigate = useNavigate();
 
   // Filter states
   const [filters, setFilters] = useState<ExpenseFilter>({
@@ -180,22 +175,30 @@ const Summary: React.FC = () => {
   }
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', bgcolor: '#f5f5f5' }}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
       <Container maxWidth={false} disableGutters sx={{ mt: 4, mb: 4, flexGrow: 1, px: { xs: 2, sm: 3, md: 4 } }}>
         {/* Exchange Rates Info */}
         {totals.mode === 'breakdown' && Object.keys(exchangeRates).length > 0 && (
           <Box mb={3}>
-            <Paper sx={{ p: 2, bgcolor: '#f8f9fa' }}>
-              <Typography variant="body2" color="text.secondary" gutterBottom>
-                <strong>Exchange Rates to {baseCurrency}:</strong>
+            <Paper sx={{ 
+              p: 3, 
+              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              color: 'white',
+              borderRadius: 3,
+              boxShadow: '0 8px 32px rgba(102, 126, 234, 0.3)',
+            }}>
+              <Typography variant="body1" fontWeight={600} gutterBottom>
+                Exchange Rates to {baseCurrency}:
+              </Typography>
+              <Box display="flex" gap={3} flexWrap="wrap" mt={1}>
                 {Object.entries(exchangeRates)
                   .filter(([curr]) => curr !== baseCurrency)
                   .map(([currency, rate]) => (
-                    <span key={currency} style={{ marginLeft: '16px' }}>
+                    <Typography key={currency} variant="body2" sx={{ opacity: 0.95 }}>
                       1 {currency} = {rate.toLocaleString()} {CURRENCY_SYMBOLS[baseCurrency] || baseCurrency}
-                    </span>
+                    </Typography>
                   ))}
-              </Typography>
+              </Box>
             </Paper>
           </Box>
         )}
@@ -208,13 +211,30 @@ const Summary: React.FC = () => {
             onClick={() => setShowFilters(!showFilters)}
             color={hasActiveFilters ? "primary" : "inherit"}
             size="medium"
+            sx={{
+              borderRadius: 3,
+              px: 3,
+              boxShadow: showFilters ? '0 4px 12px rgba(102, 126, 234, 0.3)' : 'none',
+              transition: 'all 0.3s ease',
+              '&:hover': {
+                transform: 'translateY(-2px)',
+                boxShadow: '0 6px 16px rgba(102, 126, 234, 0.4)',
+              },
+            }}
           >
             Filters {hasActiveFilters && `(${Object.values({...filters, from: fromDate, to: toDate}).filter(v => v !== undefined && v !== null).length})`}
           </Button>
         </Box>
 
         <Collapse in={showFilters}>
-          <Paper sx={{ p: 3, mb: 3 }}>
+          <Paper sx={{ 
+            p: 3, 
+            mb: 3,
+            borderRadius: 3,
+            boxShadow: '0 8px 32px rgba(0,0,0,0.08)',
+            border: '1px solid',
+            borderColor: 'divider',
+          }}>
             <Box display="flex" flexDirection="column" gap={2}>
               <Box display="flex" gap={2} flexWrap="wrap">
                 <TextField
@@ -306,10 +326,25 @@ const Summary: React.FC = () => {
               </LocalizationProvider>
 
               <Box display="flex" gap={2} justifyContent="flex-end">
-                <Button variant="outlined" onClick={handleClearFilters}>
+                <Button 
+                  variant="outlined" 
+                  onClick={handleClearFilters}
+                  sx={{ borderRadius: 2, px: 3 }}
+                >
                   Clear
                 </Button>
-                <Button variant="contained" onClick={handleApplyFilters}>
+                <Button 
+                  variant="contained" 
+                  onClick={handleApplyFilters}
+                  sx={{ 
+                    borderRadius: 2, 
+                    px: 3,
+                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                    '&:hover': {
+                      background: 'linear-gradient(135deg, #5568d3 0%, #6b3f8e 100%)',
+                    },
+                  }}
+                >
                   Apply Filters
                 </Button>
               </Box>
@@ -331,7 +366,14 @@ const Summary: React.FC = () => {
                 flex: { xs: '1 1 100%', sm: '1 1 calc(50% - 8px)', md: '1 1 calc(33.333% - 11px)' },
                 minWidth: '250px',
                 background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', 
-                color: 'white' 
+                color: 'white',
+                borderRadius: 4,
+                boxShadow: '0 10px 40px rgba(102, 126, 234, 0.3)',
+                transition: 'transform 0.3s ease, box-shadow 0.3s ease',
+                '&:hover': {
+                  transform: 'translateY(-8px)',
+                  boxShadow: '0 20px 60px rgba(102, 126, 234, 0.4)',
+                },
               }}>
                 <CardContent>
                   <Box display="flex" justifyContent="space-between" alignItems="flex-start">
@@ -354,7 +396,14 @@ const Summary: React.FC = () => {
                 flex: { xs: '1 1 100%', sm: '1 1 calc(50% - 8px)', md: '1 1 calc(33.333% - 11px)' },
                 minWidth: '250px',
                 background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)', 
-                color: 'white' 
+                color: 'white',
+                borderRadius: 4,
+                boxShadow: '0 10px 40px rgba(240, 147, 251, 0.3)',
+                transition: 'transform 0.3s ease, box-shadow 0.3s ease',
+                '&:hover': {
+                  transform: 'translateY(-8px)',
+                  boxShadow: '0 20px 60px rgba(240, 147, 251, 0.4)',
+                },
               }}>
                 <CardContent>
                   <Box display="flex" justifyContent="space-between" alignItems="flex-start">
@@ -379,7 +428,18 @@ const Summary: React.FC = () => {
                 background: totals.single.balance >= 0 
                   ? 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)' 
                   : 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)', 
-                color: 'white' 
+                color: 'white',
+                borderRadius: 4,
+                boxShadow: totals.single.balance >= 0
+                  ? '0 10px 40px rgba(79, 172, 254, 0.3)'
+                  : '0 10px 40px rgba(250, 112, 154, 0.3)',
+                transition: 'transform 0.3s ease, box-shadow 0.3s ease',
+                '&:hover': {
+                  transform: 'translateY(-8px)',
+                  boxShadow: totals.single.balance >= 0
+                    ? '0 20px 60px rgba(79, 172, 254, 0.4)'
+                    : '0 20px 60px rgba(250, 112, 154, 0.4)',
+                },
               }}>
                 <CardContent>
                   <Box display="flex" justifyContent="space-between" alignItems="flex-start">
@@ -406,169 +466,166 @@ const Summary: React.FC = () => {
 
         {totals.mode === 'breakdown' && totals.converted && (
           <>
-            <Box mb={3}>
-              <Typography variant="h6" gutterBottom fontWeight={600} sx={{ mb: 2 }}>
-                Total (Converted to {totals.converted.currency})
-              </Typography>
-              <Box display="flex" flexWrap="wrap" gap={2}>
-                <Card sx={{ 
-                  flex: { xs: '1 1 100%', sm: '1 1 calc(50% - 8px)', md: '1 1 calc(33.333% - 11px)' },
-                  minWidth: '250px',
-                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', 
-                  color: 'white' 
-                }}>
-                  <CardContent>
-                    <Box display="flex" justifyContent="space-between" alignItems="flex-start">
-                      <Box>
-                        <Typography variant="body2" sx={{ opacity: 0.9, mb: 1 }}>
-                          Total Income
+            <Box display="flex" flexWrap="wrap" gap={3} mb={4}>
+              {/* Income Card with Breakdown */}
+              <Card sx={{ 
+                flex: { xs: '1 1 100%', md: '1 1 calc(33.333% - 16px)' },
+                minWidth: '280px',
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', 
+                color: 'white',
+                borderRadius: 4,
+                boxShadow: '0 10px 40px rgba(102, 126, 234, 0.3)',
+                transition: 'transform 0.3s ease, box-shadow 0.3s ease',
+                '&:hover': {
+                  transform: 'translateY(-8px)',
+                  boxShadow: '0 20px 60px rgba(102, 126, 234, 0.4)',
+                },
+              }}>
+                <CardContent>
+                  <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={2}>
+                    <Box>
+                      <Typography variant="body2" sx={{ opacity: 0.9, mb: 1 }}>
+                        Total Income
+                      </Typography>
+                      <Typography variant="h4" fontWeight="bold">
+                        {formatCurrency(totals.converted.income, totals.converted.currency)}
+                      </Typography>
+                    </Box>
+                    <Avatar sx={{ bgcolor: 'rgba(255,255,255,0.25)', width: 48, height: 48 }}>
+                      <TrendingUp />
+                    </Avatar>
+                  </Box>
+                  <Box sx={{ 
+                    mt: 3, 
+                    pt: 2, 
+                    borderTop: '1px solid rgba(255,255,255,0.2)',
+                  }}>
+                    <Typography variant="caption" sx={{ opacity: 0.8, mb: 1.5, display: 'block' }}>
+                      By Currency:
+                    </Typography>
+                    {Object.entries(totals.byCurrency).map(([currency, data]) => (
+                      <Box key={currency} display="flex" justifyContent="space-between" mb={0.5}>
+                        <Typography variant="body2" sx={{ opacity: 0.9 }}>
+                          {currency}
                         </Typography>
-                        <Typography variant="h4" fontWeight="bold" sx={{ fontSize: { xs: '1.5rem', md: '2.125rem' } }}>
-                          {formatCurrency(totals.converted.income, totals.converted.currency)}
+                        <Typography variant="body2" fontWeight={500}>
+                          {formatCurrency(data.income, currency)}
                         </Typography>
                       </Box>
-                      <Avatar sx={{ bgcolor: 'rgba(255,255,255,0.3)' }}>
-                        <TrendingUp />
-                      </Avatar>
-                    </Box>
-                  </CardContent>
-                </Card>
+                    ))}
+                  </Box>
+                </CardContent>
+              </Card>
 
-                <Card sx={{ 
-                  flex: { xs: '1 1 100%', sm: '1 1 calc(50% - 8px)', md: '1 1 calc(33.333% - 11px)' },
-                  minWidth: '250px',
-                  background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)', 
-                  color: 'white' 
-                }}>
-                  <CardContent>
-                    <Box display="flex" justifyContent="space-between" alignItems="flex-start">
-                      <Box>
-                        <Typography variant="body2" sx={{ opacity: 0.9, mb: 1 }}>
-                          Total Expenses
+              {/* Expense Card with Breakdown */}
+              <Card sx={{ 
+                flex: { xs: '1 1 100%', md: '1 1 calc(33.333% - 16px)' },
+                minWidth: '280px',
+                background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)', 
+                color: 'white',
+                borderRadius: 4,
+                boxShadow: '0 10px 40px rgba(240, 147, 251, 0.3)',
+                transition: 'transform 0.3s ease, box-shadow 0.3s ease',
+                '&:hover': {
+                  transform: 'translateY(-8px)',
+                  boxShadow: '0 20px 60px rgba(240, 147, 251, 0.4)',
+                },
+              }}>
+                <CardContent>
+                  <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={2}>
+                    <Box>
+                      <Typography variant="body2" sx={{ opacity: 0.9, mb: 1 }}>
+                        Total Expenses
+                      </Typography>
+                      <Typography variant="h4" fontWeight="bold">
+                        {formatCurrency(totals.converted.expense, totals.converted.currency)}
+                      </Typography>
+                    </Box>
+                    <Avatar sx={{ bgcolor: 'rgba(255,255,255,0.25)', width: 48, height: 48 }}>
+                      <TrendingDown />
+                    </Avatar>
+                  </Box>
+                  <Box sx={{ 
+                    mt: 3, 
+                    pt: 2, 
+                    borderTop: '1px solid rgba(255,255,255,0.2)',
+                  }}>
+                    <Typography variant="caption" sx={{ opacity: 0.8, mb: 1.5, display: 'block' }}>
+                      By Currency:
+                    </Typography>
+                    {Object.entries(totals.byCurrency).map(([currency, data]) => (
+                      <Box key={currency} display="flex" justifyContent="space-between" mb={0.5}>
+                        <Typography variant="body2" sx={{ opacity: 0.9 }}>
+                          {currency}
                         </Typography>
-                        <Typography variant="h4" fontWeight="bold" sx={{ fontSize: { xs: '1.5rem', md: '2.125rem' } }}>
-                          {formatCurrency(totals.converted.expense, totals.converted.currency)}
+                        <Typography variant="body2" fontWeight={500}>
+                          {formatCurrency(data.expense, currency)}
                         </Typography>
                       </Box>
-                      <Avatar sx={{ bgcolor: 'rgba(255,255,255,0.3)' }}>
-                        <TrendingDown />
-                      </Avatar>
-                    </Box>
-                  </CardContent>
-                </Card>
+                    ))}
+                  </Box>
+                </CardContent>
+              </Card>
 
-                <Card sx={{ 
-                  flex: { xs: '1 1 100%', sm: '1 1 calc(50% - 8px)', md: '1 1 calc(33.333% - 11px)' },
-                  minWidth: '250px',
-                  background: totals.converted.balance >= 0 
-                    ? 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)' 
-                    : 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)', 
-                  color: 'white' 
-                }}>
-                  <CardContent>
-                    <Box display="flex" justifyContent="space-between" alignItems="flex-start">
-                      <Box>
-                        <Typography variant="body2" sx={{ opacity: 0.9, mb: 1 }}>
-                          Balance
+              {/* Balance Card with Breakdown */}
+              <Card sx={{ 
+                flex: { xs: '1 1 100%', md: '1 1 calc(33.333% - 16px)' },
+                minWidth: '280px',
+                background: totals.converted.balance >= 0 
+                  ? 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)' 
+                  : 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)', 
+                color: 'white',
+                borderRadius: 4,
+                boxShadow: totals.converted.balance >= 0
+                  ? '0 10px 40px rgba(79, 172, 254, 0.3)'
+                  : '0 10px 40px rgba(250, 112, 154, 0.3)',
+                transition: 'transform 0.3s ease, box-shadow 0.3s ease',
+                '&:hover': {
+                  transform: 'translateY(-8px)',
+                  boxShadow: totals.converted.balance >= 0
+                    ? '0 20px 60px rgba(79, 172, 254, 0.4)'
+                    : '0 20px 60px rgba(250, 112, 154, 0.4)',
+                },
+              }}>
+                <CardContent>
+                  <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={2}>
+                    <Box>
+                      <Typography variant="body2" sx={{ opacity: 0.9, mb: 1 }}>
+                        Balance
+                      </Typography>
+                      <Typography variant="h4" fontWeight="bold">
+                        {formatCurrency(Math.abs(totals.converted.balance), totals.converted.currency)}
+                      </Typography>
+                      <Typography variant="caption" sx={{ opacity: 0.9 }}>
+                        {totals.converted.balance >= 0 ? 'Surplus' : 'Deficit'}
+                      </Typography>
+                    </Box>
+                    <Avatar sx={{ bgcolor: 'rgba(255,255,255,0.25)', width: 48, height: 48 }}>
+                      <AccountBalance />
+                    </Avatar>
+                  </Box>
+                  <Box sx={{ 
+                    mt: 3, 
+                    pt: 2, 
+                    borderTop: '1px solid rgba(255,255,255,0.2)',
+                  }}>
+                    <Typography variant="caption" sx={{ opacity: 0.8, mb: 1.5, display: 'block' }}>
+                      By Currency:
+                    </Typography>
+                    {Object.entries(totals.byCurrency).map(([currency, data]) => (
+                      <Box key={currency} display="flex" justifyContent="space-between" mb={0.5}>
+                        <Typography variant="body2" sx={{ opacity: 0.9 }}>
+                          {currency}
                         </Typography>
-                        <Typography variant="h4" fontWeight="bold" sx={{ fontSize: { xs: '1.5rem', md: '2.125rem' } }}>
-                          {formatCurrency(Math.abs(totals.converted.balance), totals.converted.currency)}
-                        </Typography>
-                        <Typography variant="caption">
-                          {totals.converted.balance >= 0 ? 'Surplus' : 'Deficit'}
+                        <Typography variant="body2" fontWeight={500}>
+                          {formatCurrency(Math.abs(data.balance), currency)} {data.balance >= 0 ? '↑' : '↓'}
                         </Typography>
                       </Box>
-                      <Avatar sx={{ bgcolor: 'rgba(255,255,255,0.3)' }}>
-                        <AccountBalance />
-                      </Avatar>
-                    </Box>
-                  </CardContent>
-                </Card>
-              </Box>
+                    ))}
+                  </Box>
+                </CardContent>
+              </Card>
             </Box>
-
-            {Object.entries(totals.byCurrency).map(([currency, data]) => (
-              <Box key={currency} mb={3}>
-                <Typography variant="h6" gutterBottom fontWeight={600} sx={{ mb: 2 }}>
-                  {currency} (Original)
-                </Typography>
-                <Box display="flex" flexWrap="wrap" gap={2}>
-                  <Card sx={{ 
-                    flex: { xs: '1 1 100%', sm: '1 1 calc(50% - 8px)', md: '1 1 calc(33.333% - 11px)' },
-                    minWidth: '250px',
-                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', 
-                    color: 'white' 
-                  }}>
-                    <CardContent>
-                      <Box display="flex" justifyContent="space-between" alignItems="flex-start">
-                        <Box>
-                          <Typography variant="body2" sx={{ opacity: 0.9, mb: 1 }}>
-                            Income
-                          </Typography>
-                          <Typography variant="h5" fontWeight="bold">
-                            {formatCurrency(data.income, currency)}
-                          </Typography>
-                        </Box>
-                        <Avatar sx={{ bgcolor: 'rgba(255,255,255,0.3)', width: 40, height: 40 }}>
-                          <TrendingUp fontSize="small" />
-                        </Avatar>
-                      </Box>
-                    </CardContent>
-                  </Card>
-
-                  <Card sx={{ 
-                    flex: { xs: '1 1 100%', sm: '1 1 calc(50% - 8px)', md: '1 1 calc(33.333% - 11px)' },
-                    minWidth: '250px',
-                    background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)', 
-                    color: 'white' 
-                  }}>
-                    <CardContent>
-                      <Box display="flex" justifyContent="space-between" alignItems="flex-start">
-                        <Box>
-                          <Typography variant="body2" sx={{ opacity: 0.9, mb: 1 }}>
-                            Expenses
-                          </Typography>
-                          <Typography variant="h5" fontWeight="bold">
-                            {formatCurrency(data.expense, currency)}
-                          </Typography>
-                        </Box>
-                        <Avatar sx={{ bgcolor: 'rgba(255,255,255,0.3)', width: 40, height: 40 }}>
-                          <TrendingDown fontSize="small" />
-                        </Avatar>
-                      </Box>
-                    </CardContent>
-                  </Card>
-
-                  <Card sx={{ 
-                    flex: { xs: '1 1 100%', sm: '1 1 calc(50% - 8px)', md: '1 1 calc(33.333% - 11px)' },
-                    minWidth: '250px',
-                    background: data.balance >= 0 
-                      ? 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)' 
-                      : 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)', 
-                    color: 'white' 
-                  }}>
-                    <CardContent>
-                      <Box display="flex" justifyContent="space-between" alignItems="flex-start">
-                        <Box>
-                          <Typography variant="body2" sx={{ opacity: 0.9, mb: 1 }}>
-                            Balance
-                          </Typography>
-                          <Typography variant="h5" fontWeight="bold">
-                            {formatCurrency(Math.abs(data.balance), currency)}
-                          </Typography>
-                          <Typography variant="caption">
-                            {data.balance >= 0 ? 'Surplus' : 'Deficit'}
-                          </Typography>
-                        </Box>
-                        <Avatar sx={{ bgcolor: 'rgba(255,255,255,0.3)', width: 40, height: 40 }}>
-                          <AccountBalance fontSize="small" />
-                        </Avatar>
-                      </Box>
-                    </CardContent>
-                  </Card>
-                </Box>
-              </Box>
-            ))}
           </>
         )}
       </Container>
