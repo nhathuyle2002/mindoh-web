@@ -24,6 +24,7 @@ interface ExtendedExpenseFilter {
   original_currency?: string;
   from?: string;
   to?: string;
+  group_by?: string;
 }
 
 interface FilterSectionProps {
@@ -81,6 +82,12 @@ const FilterSection: React.FC<FilterSectionProps> = ({
             <FilterChip
               label={`Currencies: ${filters.currencies.join(', ')}`}
               onDelete={() => onFilterChange('currencies', [])}
+            />
+          )}
+          {filters.group_by && (
+            <FilterChip
+              label={`Group By: ${filters.group_by}`}
+              onDelete={() => onFilterChange('group_by', undefined)}
             />
           )}
           {fromDate && (
@@ -174,6 +181,22 @@ const FilterSection: React.FC<FilterSectionProps> = ({
                 {currency}
               </MenuItem>
             ))}
+          </TextField>
+        </Box>
+        <Box flex="1 1 150px" minWidth={{ xs: '100%', sm: '150px' }}>
+          <TextField
+            select
+            fullWidth
+            label="Group By"
+            value={filters.group_by || ''}
+            onChange={(e) => onFilterChange('group_by', e.target.value)}
+            size="small"
+            sx={{ '& .MuiInputBase-input': { fontSize: '0.875rem' } }}
+          >
+            <MenuItem value="">None</MenuItem>
+            <MenuItem value="DAY">Day</MenuItem>
+            <MenuItem value="MONTH">Month</MenuItem>
+            <MenuItem value="YEAR">Year</MenuItem>
           </TextField>
         </Box>
         <Box flex="1 1 150px" minWidth={{ xs: '100%', sm: '150px' }}>

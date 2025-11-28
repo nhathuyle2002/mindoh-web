@@ -44,6 +44,7 @@ const Summary: React.FC = () => {
     original_currency: 'VND',
     from: undefined,
     to: undefined,
+    group_by: undefined,
   });
 
   // Date filter states
@@ -93,6 +94,7 @@ const Summary: React.FC = () => {
     if (filters.type) cleanFilters.type = filters.type;
     if (filters.currencies && filters.currencies.length > 0) cleanFilters.currencies = filters.currencies;
     if (filters.original_currency) cleanFilters.original_currency = filters.original_currency;
+    if (filters.group_by) cleanFilters.group_by = filters.group_by;
     if (fromDate) {
       const startOfDay = new Date(fromDate);
       startOfDay.setHours(0, 0, 0, 0);
@@ -114,6 +116,7 @@ const Summary: React.FC = () => {
       original_currency: 'VND',
       from: undefined,
       to: undefined,
+      group_by: undefined,
     });
     setFromDate(null);
     setToDate(null);
@@ -217,44 +220,6 @@ const Summary: React.FC = () => {
             </Paper>
           </Box>
         )}
-
-        {/* Filter Section */}
-        <Box display="flex" gap={2} mb={3} flexWrap="wrap">
-          <Button 
-            variant="outlined"
-            startIcon={<FilterList />} 
-            onClick={() => setShowFilters(!showFilters)}
-            size="small"
-            sx={{
-              borderRadius: 2,
-              fontWeight: 600,
-              fontSize: '0.875rem',
-              color: COLORS.text.secondary,
-              borderColor: COLORS.background.border,
-              '&:hover': {
-                borderColor: COLORS.text.tertiary,
-                bgcolor: COLORS.background.hover,
-              },
-            }}
-          >
-            Filters {hasActiveFilters && `(${Object.values({...filters, from: fromDate, to: toDate}).filter(v => v !== undefined && v !== null).length})`}
-          </Button>
-        </Box>
-
-        <Collapse in={showFilters}>
-          <FilterSection
-            filters={filters}
-            fromDate={fromDate}
-            toDate={toDate}
-            availableTypes={availableTypes}
-            availableCurrencies={availableCurrencies} // Pass availableCurrencies here
-            onFilterChange={handleFilterChange}
-            onApplyFilters={handleApplyFilters}
-            onClearFilters={handleClearFilters}
-            onClose={() => setShowFilters(false)}
-            hasActiveFilters={hasActiveFilters}
-          />
-        </Collapse>
 
         {error && (
           <Alert severity="error" sx={{ mb: 3 }}>
@@ -525,6 +490,123 @@ const Summary: React.FC = () => {
               </Card>
             </Box>
           </>
+        )}
+
+        {/* Filter Section */}
+        <Box display="flex" gap={2} mb={3} flexWrap="wrap">
+          <Button 
+            variant="outlined"
+            startIcon={<FilterList />} 
+            onClick={() => setShowFilters(!showFilters)}
+            size="small"
+            sx={{
+              borderRadius: 2,
+              fontWeight: 600,
+              fontSize: '0.875rem',
+              color: COLORS.text.secondary,
+              borderColor: COLORS.background.border,
+              '&:hover': {
+                borderColor: COLORS.text.tertiary,
+                bgcolor: COLORS.background.hover,
+              },
+            }}
+          >
+            Filters {hasActiveFilters && `(${Object.values({...filters, from: fromDate, to: toDate}).filter(v => v !== undefined && v !== null).length})`}
+          </Button>
+        </Box>
+
+        <Collapse in={showFilters}>
+          <FilterSection
+            filters={filters}
+            fromDate={fromDate}
+            toDate={toDate}
+            availableTypes={availableTypes}
+            availableCurrencies={availableCurrencies}
+            onFilterChange={handleFilterChange}
+            onApplyFilters={handleApplyFilters}
+            onClearFilters={handleClearFilters}
+            onClose={() => setShowFilters(false)}
+            hasActiveFilters={hasActiveFilters}
+          />
+        </Collapse>
+
+        {/* Grouped Summary */}
+        {summary?.groups && summary.groups.length > 0 && (
+          <Box mt={4}>
+            <Typography variant="h5" fontWeight="bold" mb={3} sx={{ color: COLORS.text.primary }}>
+              Grouped Summary ({filters.group_by})
+            </Typography>
+            <Box display="flex" flexDirection="column" gap={2}>
+              {summary.groups.map((group) => (
+                <Paper
+                  key={group.key}
+                  sx={{
+                    p: 3,
+                    borderRadius: 3,
+                    boxShadow: BOX_SHADOWS.card,
+                    background: COLORS.gradients.primary,
+                    transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+                    '&:hover': {
+                      transform: 'translateY(-2px)',
+                      boxShadow: BOX_SHADOWS.cardHover,
+                    },
+                  }}
+                >
+                  <Typography variant="h6" fontWeight="bold" mb={2} sx={{ color: COLORS.text.primary }}>
+                    {group.label}
+                  </Typography>
+                  <Box display="flex" flexWrap="wrap" gap={3}>
+                    <Box flex="1 1 200px">
+                      <Typography variant="body2" sx={{ color: COLORS.text.tertiary, mb: 0.5 }}>
+                        Income
+                      </Typography>
+                      <Typography variant="h6" fontWeight="bold" sx={{ color: COLORS.income.main }}>
+                        {formatCurrency(group.income, summary.currency)}
+                      </Typography>
+                    </Box>
+                    <Box flex="1 1 200px">
+                      <Typography variant="body2" sx={{ color: COLORS.text.tertiary, mb: 0.5 }}>
+                        Expense
+                      </Typography>
+                      <Typography variant="h6" fontWeight="bold" sx={{ color: COLORS.expense.main }}>
+                        {formatCurrency(group.expense, summary.currency)}
+                      </Typography>
+                    </Box>
+                    <Box flex="1 1 200px">
+                      <Typography variant="body2" sx={{ color: COLORS.text.tertiary, mb: 0.5 }}>
+                        Balance
+                      </Typography>
+                      <Typography 
+                        variant="h6" 
+                        fontWeight="bold" 
+                        sx={{ 
+                          color: group.balance >= 0 ? COLORS.income.main : COLORS.expense.main 
+                        }}
+                      >
+                        {formatCurrency(Math.abs(group.balance), summary.currency)} {group.balance >= 0 ? '↑' : '↓'}
+                      </Typography>
+                    </Box>
+                  </Box>
+                  {Object.keys(group.total_by_type).length > 0 && (
+                    <Box mt={2} pt={2} sx={{ borderTop: `1px solid ${COLORS.background.border}` }}>
+                      <Typography variant="body2" sx={{ color: COLORS.text.tertiary, mb: 1, fontWeight: 500 }}>
+                        By Type:
+                      </Typography>
+                      <Box display="flex" flexWrap="wrap" gap={2}>
+                        {Object.entries(group.total_by_type).map(([type, amount]) => (
+                          <Box key={type} sx={{ flex: '0 1 auto' }}>
+                            <Typography variant="body2" sx={{ color: COLORS.text.secondary }}>
+                              {type}: {formatCurrency(amount, summary.currency)}
+                            </Typography>
+                          </Box>
+                        ))}
+                      </Box>
+                    </Box>
+                  )}
+                </Paper>
+              ))}
+            </Box>
+          </Box>
         )}
       </Container>
     </Box>

@@ -50,6 +50,7 @@ const Dashboard: React.FC = () => {
     original_currency: 'VND',
     from: undefined,
     to: undefined,
+    group_by: undefined,
   });
 
   // Date filter states (stored as Date objects for DatePicker)
@@ -109,6 +110,7 @@ const Dashboard: React.FC = () => {
     if (filters.type) cleanFilters.type = filters.type;
     if (filters.currencies && filters.currencies.length > 0) cleanFilters.currencies = filters.currencies;
     if (filters.original_currency) cleanFilters.original_currency = filters.original_currency;
+    if (filters.group_by) cleanFilters.group_by = filters.group_by;
     if (fromDate) {
       // Set to start of day (00:00:00) in local timezone
       const startOfDay = new Date(fromDate);
@@ -136,6 +138,7 @@ const Dashboard: React.FC = () => {
       original_currency: 'VND',
       from: undefined,
       to: undefined,
+      group_by: undefined,
     });
     setFromDate(null);
     setToDate(null);

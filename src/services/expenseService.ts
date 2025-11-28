@@ -16,11 +16,21 @@ export type ExpenseFilter = {
   original_currency?: string;  // Currency to convert totals into when no currency filter
   from?: string;
   to?: string;
+  group_by?: string;  // Group by dimension (DAY, MONTH, YEAR)
 };
 
 export type CurrencySummary = {
   total_income: number;
   total_expense: number;
+  balance: number;
+  total_by_type: Record<string, number>;
+};
+
+export type ExpenseGroup = {
+  key: string;   // Raw key (YYYY-MM-DD / YYYY-MM / YYYY)
+  label: string; // Human-friendly label
+  income: number;
+  expense: number;
   balance: number;
   total_by_type: Record<string, number>;
 };
@@ -33,6 +43,7 @@ export type ExpenseSummary = {
   balance: number;
   total_by_type: Record<string, number>;
   by_currency?: Record<string, CurrencySummary>;  // Only present when no currency filter
+  groups?: ExpenseGroup[];  // Optional grouped summary buckets
 };
 
 export const expenseService = {
@@ -82,7 +93,7 @@ export const expenseService = {
   async getExchangeRates(): Promise<{ base_currency: string; rates: Record<string, number> }> {
     const token = getAuthToken();
     const response = await apiClient.get<{ base_currency: string; rates: Record<string, number> }>(
-      '/expenses/exchange-rates',
+      '/currency/exchange-rates',
       {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       }
@@ -93,7 +104,7 @@ export const expenseService = {
   async getAvailableCurrencies(): Promise<string[]> {
     const token = getAuthToken();
     const response = await apiClient.get<{ currencies: string[] }>(
-      '/expenses/currencies',
+      '/currency/currencies',
       {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       }
