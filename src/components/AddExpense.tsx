@@ -41,6 +41,13 @@ const AddExpense: React.FC<AddExpenseProps> = ({ onExpenseAdded, onClose }) => {
     return 0;
   };
 
+  // Initialize date to today at 00:00:00
+  const getTodayAtMidnight = () => {
+    const date = new Date();
+    date.setHours(0, 0, 0, 0);
+    return date.toISOString();
+  };
+
   const [formData, setFormData] = useState<ExpenseRequest>({
     user_id: getUserId(),
     amount: 0,
@@ -48,7 +55,7 @@ const AddExpense: React.FC<AddExpenseProps> = ({ onExpenseAdded, onClose }) => {
     kind: 'expense',
     type: '',
     currency: 'VND',
-    date: new Date().toISOString(),
+    date: getTodayAtMidnight(),
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -70,11 +77,15 @@ const AddExpense: React.FC<AddExpenseProps> = ({ onExpenseAdded, onClose }) => {
     setSuccess(false);
 
     try {
+      // Normalize date to start of day (00:00:00)
+      const date = new Date(formData.date);
+      date.setHours(0, 0, 0, 0);
+      
       await expenseService.createExpense({ 
         ...formData, 
         user_id: getUserId(), 
         type: formData.type.trim(),
-        date: new Date(formData.date).toISOString() 
+        date: date.toISOString() 
       });
       setSuccess(true);
       setFormData({
@@ -84,7 +95,7 @@ const AddExpense: React.FC<AddExpenseProps> = ({ onExpenseAdded, onClose }) => {
         kind: 'expense',
         type: '',
         currency: 'VND',
-        date: new Date().toISOString(),
+        date: getTodayAtMidnight(),
       });
       if (onExpenseAdded) {
         onExpenseAdded();
