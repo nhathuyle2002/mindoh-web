@@ -16,14 +16,12 @@ import { COLORS } from '../constants/colors';
 import type { ExpenseKind } from '../types/api';
 import FilterChip from './FilterChip';
 
-const CURRENCIES = ['VND', 'USD', 'EUR', 'JPY', 'GBP', 'AUD', 'CAD', 'CHF', 'CNY', 'HKD'];
-
 // Extended filter interface to match Dashboard usage
 interface ExtendedExpenseFilter {
   kind?: ExpenseKind;
   type?: string;
   currencies?: string[];
-  default_currency?: string;
+  original_currency?: string;
   from?: string;
   to?: string;
 }
@@ -33,6 +31,7 @@ interface FilterSectionProps {
   fromDate: Date | null;
   toDate: Date | null;
   availableTypes: string[];
+  availableCurrencies?: string[];
   onFilterChange: (field: keyof ExtendedExpenseFilter | 'from_date' | 'to_date', value: any) => void;
   onApplyFilters: () => void;
   onClearFilters: () => void;
@@ -45,6 +44,7 @@ const FilterSection: React.FC<FilterSectionProps> = ({
   fromDate,
   toDate,
   availableTypes,
+  availableCurrencies = ['VND', 'USD'],
   onFilterChange,
   onApplyFilters,
   onClearFilters,
@@ -52,7 +52,7 @@ const FilterSection: React.FC<FilterSectionProps> = ({
   hasActiveFilters,
 }) => {
   return (
-    <Paper sx={{ p: 2, mb: 3, borderRadius: 2 }} elevation={2}>
+    <Paper sx={{ p: 1.5, mb: 2, borderRadius: 2 }} elevation={2}>
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
         <Typography variant="subtitle1" fontWeight={600}>Filter Expenses</Typography>
         {onClose && (
@@ -99,7 +99,7 @@ const FilterSection: React.FC<FilterSectionProps> = ({
       )}
 
       {/* Filter Fields */}
-      <Box display="flex" flexWrap="wrap" gap={1.5} mb={1.5}>
+      <Box display="flex" flexWrap="wrap" gap={1} mb={1}>
         <Box flex="1 1 150px" minWidth={{ xs: '100%', sm: '150px' }}>
           <TextField
             select
@@ -150,7 +150,7 @@ const FilterSection: React.FC<FilterSectionProps> = ({
             size="small"
             sx={{ '& .MuiInputBase-input': { fontSize: '0.875rem' } }}
           >
-            {CURRENCIES.map((currency) => (
+            {availableCurrencies.map((currency) => (
               <MenuItem key={currency} value={currency}>
                 {currency}
               </MenuItem>
@@ -161,17 +161,15 @@ const FilterSection: React.FC<FilterSectionProps> = ({
           <TextField
             select
             fullWidth
-            label="Default Currency"
-            value={filters.default_currency || 'VND'}
-            onChange={(e) => onFilterChange('default_currency', e.target.value)}
+            label="Original Currency"
+            value={filters.original_currency || 'VND'}
+            onChange={(e) => onFilterChange('original_currency', e.target.value)}
             size="small"
-            helperText="For conversion when no currency filter"
             sx={{ 
               '& .MuiInputBase-input': { fontSize: '0.875rem' },
-              '& .MuiFormHelperText-root': { fontSize: '0.7rem' },
             }}
           >
-            {CURRENCIES.map((currency) => (
+            {availableCurrencies.map((currency) => (
               <MenuItem key={currency} value={currency}>
                 {currency}
               </MenuItem>
@@ -213,7 +211,7 @@ const FilterSection: React.FC<FilterSectionProps> = ({
       </Box>
 
       {/* Action Buttons */}
-      <Box display="flex" gap={1.5} mt={2}>
+      <Box display="flex" gap={1} mt={1.5}>
         <Button 
           variant="contained" 
           size="small" 

@@ -34,13 +34,14 @@ const Summary: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(false);
   const [availableTypes, setAvailableTypes] = useState<string[]>([]);
+  const [availableCurrencies, setAvailableCurrencies] = useState<string[]>(['VND', 'USD']);
 
   // Filter states
   const [filters, setFilters] = useState<ExpenseFilter>({
     kind: undefined,
     type: undefined,
     currencies: undefined,
-    default_currency: 'VND',
+    original_currency: 'VND',
     from: undefined,
     to: undefined,
   });
@@ -65,6 +66,7 @@ const Summary: React.FC = () => {
   useEffect(() => {
     fetchSummary();
     expenseService.getUniqueTypes().then(types => setAvailableTypes(types)).catch(() => {});
+    expenseService.getAvailableCurrencies().then(currencies => setAvailableCurrencies(currencies)).catch(() => {});
     expenseService.getExchangeRates().then(data => {
       setExchangeRates(data.rates);
       setBaseCurrency(data.base_currency);
@@ -90,7 +92,7 @@ const Summary: React.FC = () => {
     if (filters.kind) cleanFilters.kind = filters.kind;
     if (filters.type) cleanFilters.type = filters.type;
     if (filters.currencies && filters.currencies.length > 0) cleanFilters.currencies = filters.currencies;
-    if (filters.default_currency) cleanFilters.default_currency = filters.default_currency;
+    if (filters.original_currency) cleanFilters.original_currency = filters.original_currency;
     if (fromDate) {
       const startOfDay = new Date(fromDate);
       startOfDay.setHours(0, 0, 0, 0);
@@ -109,7 +111,7 @@ const Summary: React.FC = () => {
       kind: undefined,
       type: undefined,
       currencies: undefined,
-      default_currency: 'VND',
+      original_currency: 'VND',
       from: undefined,
       to: undefined,
     });
@@ -245,6 +247,7 @@ const Summary: React.FC = () => {
             fromDate={fromDate}
             toDate={toDate}
             availableTypes={availableTypes}
+            availableCurrencies={availableCurrencies} // Pass availableCurrencies here
             onFilterChange={handleFilterChange}
             onApplyFilters={handleApplyFilters}
             onClearFilters={handleClearFilters}

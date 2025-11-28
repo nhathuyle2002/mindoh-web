@@ -40,13 +40,14 @@ const Dashboard: React.FC = () => {
   const [open, setOpen] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [availableTypes, setAvailableTypes] = useState<string[]>([]);
+  const [availableCurrencies, setAvailableCurrencies] = useState<string[]>(['VND', 'USD']);
 
   // Filter states
   const [filters, setFilters] = useState<ExpenseFilter>({
     kind: undefined,
     type: undefined,
     currencies: undefined,
-    default_currency: 'VND',
+    original_currency: 'VND',
     from: undefined,
     to: undefined,
   });
@@ -79,8 +80,9 @@ const Dashboard: React.FC = () => {
 
   useEffect(() => {
     fetchExpenses();
-    // Fetch available types
+    // Fetch available types and currencies
     expenseService.getUniqueTypes().then(types => setAvailableTypes(types)).catch(() => {});
+    expenseService.getAvailableCurrencies().then(currencies => setAvailableCurrencies(currencies)).catch(() => {});
     // eslint-disable-next-line
   }, []);
 
@@ -106,7 +108,7 @@ const Dashboard: React.FC = () => {
     if (filters.kind) cleanFilters.kind = filters.kind;
     if (filters.type) cleanFilters.type = filters.type;
     if (filters.currencies && filters.currencies.length > 0) cleanFilters.currencies = filters.currencies;
-    if (filters.default_currency) cleanFilters.default_currency = filters.default_currency;
+    if (filters.original_currency) cleanFilters.original_currency = filters.original_currency;
     if (fromDate) {
       // Set to start of day (00:00:00) in local timezone
       const startOfDay = new Date(fromDate);
@@ -131,7 +133,7 @@ const Dashboard: React.FC = () => {
       kind: undefined,
       type: undefined,
       currencies: undefined,
-      default_currency: 'VND',
+      original_currency: 'VND',
       from: undefined,
       to: undefined,
     });
@@ -172,42 +174,9 @@ const Dashboard: React.FC = () => {
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', bgcolor: COLORS.background.main }}>
       <Container maxWidth={false} disableGutters sx={{ mt: 4, mb: 4, flexGrow: 1, px: { xs: 2, sm: 3, md: 4 } }}>
-        {/* Filter Section */}
-        <Box display="flex" gap={2} mb={2} flexWrap="wrap">
-          <Button 
-            variant="outlined"
-            startIcon={<FilterList />} 
-            onClick={() => setShowFilters(!showFilters)}
-            size="small"
-            sx={{ 
-              fontSize: '0.875rem',
-              borderRadius: 2,
-              fontWeight: 600,
-              color: COLORS.text.secondary,
-              borderColor: COLORS.background.border,
-              '&:hover': {
-                borderColor: COLORS.text.tertiary,
-                bgcolor: COLORS.background.hover,
-              },
-            }}
-          >
-            Filters {hasActiveFilters && `(${Object.values(filters).filter(v => v).length})`}
-          </Button>
-        </Box>
-
-      <Collapse in={showFilters}>
-        <FilterSection
-          filters={filters}
-          fromDate={fromDate}
-          toDate={toDate}
-          availableTypes={availableTypes}
-          onFilterChange={handleFilterChange}
-          onApplyFilters={handleApplyFilters}
-          onClearFilters={handleClearFilters}
-          onClose={() => setShowFilters(false)}
-          hasActiveFilters={hasActiveFilters}
-        />
-      </Collapse>
+        {/* Floating Action Button */}
+      
+      {/* Note: Filter controls moved below summaries */}
 
       {/* Floating Action Button */}
       <Fab 
@@ -253,57 +222,63 @@ const Dashboard: React.FC = () => {
       {/* Summary Section */}
       {expenses.length > 0 && summary && (
         <Paper sx={{ 
-          p: 3, 
-          mb: 3, 
-          borderRadius: 3, 
+          p: 2, 
+          mb: 2, 
+          borderRadius: 2, 
           background: COLORS.gradients.primary,
           boxShadow: BOX_SHADOWS.card,
         }} elevation={0}>
-          <Typography variant="h6" fontWeight={600} gutterBottom sx={{ color: COLORS.text.secondary }}>
-            Transaction Summary
-          </Typography>
-          <Box display="flex" flexWrap="wrap" gap={3} mt={2}>
-            <Box flex="1 1 200px">
-              <Typography variant="body2" sx={{ color: COLORS.text.tertiary, mb: 0.5 }}>
-                Total Transactions
-              </Typography>
-              <Typography variant="h4" fontWeight="bold" sx={{ color: COLORS.text.primary }}>
-                {expenses.length}
-              </Typography>
-            </Box>
-            <Box flex="1 1 200px">
-              <Typography variant="body2" sx={{ color: COLORS.text.tertiary, mb: 0.5 }}>
-                Total Income
-              </Typography>
-              <Typography variant="h4" fontWeight="bold" sx={{ color: COLORS.income.main }}>
-                {formatCurrency(summary.total_income, summary.currency)}
-              </Typography>
-              <Typography variant="caption" sx={{ color: COLORS.text.quaternary }}>
-                {expenses.filter(e => e.kind === 'income').length} transactions
-              </Typography>
-            </Box>
-            <Box flex="1 1 200px">
-              <Typography variant="body2" sx={{ color: COLORS.text.tertiary, mb: 0.5 }}>
-                Total Expenses
-              </Typography>
-              <Typography variant="h4" fontWeight="bold" sx={{ color: COLORS.expense.main }}>
-                {formatCurrency(summary.total_expense, summary.currency)}
-              </Typography>
-              <Typography variant="caption" sx={{ color: COLORS.text.quaternary }}>
-                {expenses.filter(e => e.kind === 'expense').length} transactions
-              </Typography>
-            </Box>
-            <Box flex="1 1 200px">
-              <Typography variant="body2" sx={{ color: COLORS.text.tertiary, mb: 0.5 }}>
-                Balance
-              </Typography>
-              <Typography variant="h4" fontWeight="bold" sx={{ color: summary.balance >= 0 ? COLORS.income.main : COLORS.expense.main }}>
-                {formatCurrency(Math.abs(summary.balance), summary.currency)}
-              </Typography>
+          <Box display="flex" alignItems="center" justifyContent="space-between" flexWrap="wrap" gap={1}>
+            <Typography variant="subtitle1" fontWeight={600} sx={{ color: COLORS.text.secondary }}>
+              Transaction Summary
+            </Typography>
+            <Box display="flex" flexWrap="wrap" gap={1.5}>
+              <Chip label={`Total: ${expenses.length}`} size="small" sx={{ bgcolor: 'action.hover' }} />
+              <Chip label={`Income: ${formatCurrency(summary.total_income, summary.currency)}`} size="small" color="success" variant="outlined" />
+              <Chip label={`Expense: ${formatCurrency(summary.total_expense, summary.currency)}`} size="small" color="error" variant="outlined" />
+              <Chip label={`Balance: ${formatCurrency(Math.abs(summary.balance), summary.currency)}`} size="small" variant="outlined" />
             </Box>
           </Box>
         </Paper>
       )}
+
+      {/* Filter Section moved below summary and above transactions */}
+      <Box display="flex" gap={2} mb={2} flexWrap="wrap">
+        <Button 
+          variant="outlined"
+          startIcon={<FilterList />} 
+          onClick={() => setShowFilters(!showFilters)}
+          size="small"
+          sx={{ 
+            fontSize: '0.875rem',
+            borderRadius: 2,
+            fontWeight: 600,
+            color: COLORS.text.secondary,
+            borderColor: COLORS.background.border,
+            '&:hover': {
+              borderColor: COLORS.text.tertiary,
+              bgcolor: COLORS.background.hover,
+            },
+          }}
+        >
+          Filters {hasActiveFilters && `(${Object.values(filters).filter(v => v).length})`}
+        </Button>
+      </Box>
+
+      <Collapse in={showFilters}>
+        <FilterSection
+          filters={filters}
+          fromDate={fromDate}
+          toDate={toDate}
+          availableTypes={availableTypes}
+          availableCurrencies={availableCurrencies}
+          onFilterChange={handleFilterChange}
+          onApplyFilters={handleApplyFilters}
+          onClearFilters={handleClearFilters}
+          onClose={() => setShowFilters(false)}
+          hasActiveFilters={hasActiveFilters}
+        />
+      </Collapse>
 
       <Paper sx={{ p: { xs: 2, sm: 3 }, borderRadius: 2 }} elevation={2}>
         <Typography variant="h5" fontWeight={600} gutterBottom>

@@ -13,7 +13,7 @@ export type ExpenseFilter = {
   kind?: ExpenseKind;
   type?: string;
   currencies?: string[];  // Changed from currency to currencies (array)
-  default_currency?: string;  // Add default currency for conversion
+  original_currency?: string;  // Currency to convert totals into when no currency filter
   from?: string;
   to?: string;
 };
@@ -88,5 +88,16 @@ export const expenseService = {
       }
     );
     return response.data;
+  },
+
+  async getAvailableCurrencies(): Promise<string[]> {
+    const token = getAuthToken();
+    const response = await apiClient.get<{ currencies: string[] }>(
+      '/expenses/currencies',
+      {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      }
+    );
+    return response.data.currencies;
   },
 };
