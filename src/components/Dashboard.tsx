@@ -4,40 +4,33 @@ import {
   Paper,
   Typography,
   Box,
-  List,
-  ListItem,
-  ListItemText,
   Chip,
   CircularProgress,
   Alert,
   Button,
   Dialog,
   DialogContent,
-  TextField,
-  MenuItem,
-  IconButton,
   Collapse,
   Divider,
   Fade,
   Fab,
-  Stack,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
 } from '@mui/material';
-import { DatePicker } from '@mui/x-date-pickers/DatePicker';
-import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
-import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { format } from 'date-fns';
-import { 
-  FilterList, 
-  Close, 
-  Add, 
-} from '@mui/icons-material';
+import { FilterList, Add } from '@mui/icons-material';
 import { expenseService } from '../services/expenseService';
 import type { ExpenseFilter, ExpenseSummary } from '../services/expenseService';
-import type { Expense, ExpenseKind } from '../types/api';
+import type { Expense } from '../types/api';
 import AddExpense from './AddExpense';
-import { useNavigate } from 'react-router-dom';
-import { CURRENCIES, CURRENCY_SYMBOLS } from '../constants/currencies';
+import { CURRENCY_SYMBOLS } from '../constants/currencies';
 import { DATETIME_WITH_TIMEZONE_FORMAT } from '../constants/expense';
+import { COLORS, BOX_SHADOWS } from '../constants/colors';
+import FilterSection from '../common/FilterSection';
 
 const Dashboard: React.FC = () => {
   const [expenses, setExpenses] = useState<Expense[]>([]);
@@ -47,7 +40,6 @@ const Dashboard: React.FC = () => {
   const [open, setOpen] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [availableTypes, setAvailableTypes] = useState<string[]>([]);
-  const navigate = useNavigate();
 
   // Filter states
   const [filters, setFilters] = useState<ExpenseFilter>({
@@ -95,11 +87,17 @@ const Dashboard: React.FC = () => {
   const handleOpen = () => setOpen(true);
   const handleClose = () => setOpen(false);
 
-  const handleFilterChange = (field: keyof ExpenseFilter, value: any) => {
-    setFilters(prev => ({
-      ...prev,
-      [field]: value || undefined,
-    }));
+  const handleFilterChange = (field: keyof ExpenseFilter | 'from_date' | 'to_date', value: any) => {
+    if (field === 'from_date') {
+      setFromDate(value);
+    } else if (field === 'to_date') {
+      setToDate(value);
+    } else {
+      setFilters(prev => ({
+        ...prev,
+        [field]: value || undefined,
+      }));
+    }
   };
 
   const handleApplyFilters = () => {
@@ -142,7 +140,7 @@ const Dashboard: React.FC = () => {
     fetchExpenses({});
   };
 
-  const hasActiveFilters = filters.kind || filters.type || (filters.currencies && filters.currencies.length > 0) || fromDate || toDate;
+  const hasActiveFilters = !!(filters.kind || filters.type || (filters.currencies && filters.currencies.length > 0) || fromDate || toDate);
 
   const formatCurrency = (amount: number, currency: string) => {
     // VND doesn't use decimal places
@@ -163,22 +161,6 @@ const Dashboard: React.FC = () => {
     });
   };
 
-  const getCategoryColor = (category: string | undefined) => {
-    if (!category) return 'default';
-    const colors: { [key: string]: 'primary' | 'secondary' | 'success' | 'warning' | 'error' | 'info' } = {
-      food: 'error',
-      transport: 'warning',
-      entertainment: 'secondary',
-      health: 'error',
-      shopping: 'info',
-      bill: 'warning',
-      salary: 'success',
-      bonus: 'success',
-      gift: 'info',
-    };
-    return colors[category.toLowerCase()] || 'default';
-  };
-
   if (loading) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="80vh">
@@ -193,137 +175,38 @@ const Dashboard: React.FC = () => {
         {/* Filter Section */}
         <Box display="flex" gap={2} mb={2} flexWrap="wrap">
           <Button 
-            variant={showFilters ? "contained" : "outlined"}
+            variant="outlined"
             startIcon={<FilterList />} 
             onClick={() => setShowFilters(!showFilters)}
-            color={hasActiveFilters ? "primary" : "inherit"}
-            size="medium"
-            sx={{ fontSize: { xs: '0.875rem', sm: '0.9375rem' } }}
+            size="small"
+            sx={{ 
+              fontSize: '0.875rem',
+              borderRadius: 2,
+              fontWeight: 600,
+              color: COLORS.text.secondary,
+              borderColor: COLORS.background.border,
+              '&:hover': {
+                borderColor: COLORS.text.tertiary,
+                bgcolor: COLORS.background.hover,
+              },
+            }}
           >
             Filters {hasActiveFilters && `(${Object.values(filters).filter(v => v).length})`}
           </Button>
         </Box>
 
       <Collapse in={showFilters}>
-        <Paper sx={{ p: 3, mb: 3, borderRadius: 2 }} elevation={2}>
-          <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-            <Typography variant="h6" fontWeight={600}>Filter Expenses</Typography>
-            <IconButton size="small" onClick={() => setShowFilters(false)}>
-              <Close />
-            </IconButton>
-          </Box>
-          <Box display="flex" flexWrap="wrap" gap={2} mb={2}>
-            <Box flex="1 1 200px" minWidth={{ xs: '100%', sm: '200px' }}>
-              <TextField
-                select
-                fullWidth
-                label="Kind"
-                value={filters.kind || ''}
-                onChange={(e) => handleFilterChange('kind', e.target.value as ExpenseKind)}
-                size="small"
-              >
-                <MenuItem value="">All</MenuItem>
-                <MenuItem value="expense">Expense</MenuItem>
-                <MenuItem value="income">Income</MenuItem>
-              </TextField>
-            </Box>
-            <Box flex="1 1 200px" minWidth={{ xs: '100%', sm: '200px' }}>
-              <TextField
-                select
-                fullWidth
-                label="Type"
-                value={filters.type || ''}
-                onChange={(e) => handleFilterChange('type', e.target.value)}
-                size="small"
-              >
-                <MenuItem value="">All</MenuItem>
-                {availableTypes.map((type) => (
-                  <MenuItem key={type} value={type}>
-                    {type}
-                  </MenuItem>
-                ))}
-              </TextField>
-            </Box>
-            <Box flex="1 1 200px" minWidth={{ xs: '100%', sm: '200px' }}>
-              <TextField
-                select
-                fullWidth
-                label="Currencies"
-                value={filters.currencies || []}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  handleFilterChange('currencies', typeof value === 'string' ? value.split(',') : value);
-                }}
-                SelectProps={{
-                  multiple: true,
-                  renderValue: (selected) => (selected as string[]).join(', '),
-                }}
-                size="small"
-              >
-                {CURRENCIES.map((currency) => (
-                  <MenuItem key={currency} value={currency}>
-                    {currency}
-                  </MenuItem>
-                ))}
-              </TextField>
-            </Box>
-            <Box flex="1 1 200px" minWidth={{ xs: '100%', sm: '200px' }}>
-              <TextField
-                select
-                fullWidth
-                label="Default Currency"
-                value={filters.default_currency || 'VND'}
-                onChange={(e) => handleFilterChange('default_currency', e.target.value)}
-                size="small"
-                helperText="For conversion when no currency filter"
-              >
-                {CURRENCIES.map((currency) => (
-                  <MenuItem key={currency} value={currency}>
-                    {currency}
-                  </MenuItem>
-                ))}
-              </TextField>
-            </Box>
-            <Box flex="1 1 200px" minWidth={{ xs: '100%', sm: '200px' }}>
-              <LocalizationProvider dateAdapter={AdapterDateFns}>
-                <DatePicker
-                  label="From Date"
-                  value={fromDate}
-                  onChange={(newValue) => setFromDate(newValue)}
-                  slotProps={{ 
-                    textField: { 
-                      fullWidth: true, 
-                      size: 'small' 
-                    } 
-                  }}
-                />
-              </LocalizationProvider>
-            </Box>
-            <Box flex="1 1 200px" minWidth={{ xs: '100%', sm: '200px' }}>
-              <LocalizationProvider dateAdapter={AdapterDateFns}>
-                <DatePicker
-                  label="To Date"
-                  value={toDate}
-                  onChange={(newValue) => setToDate(newValue)}
-                  slotProps={{ 
-                    textField: { 
-                      fullWidth: true, 
-                      size: 'small' 
-                    } 
-                  }}
-                />
-              </LocalizationProvider>
-            </Box>
-          </Box>
-          <Box display="flex" gap={2} mt={3}>
-            <Button variant="contained" size="large" onClick={handleApplyFilters}>
-              Apply Filters
-            </Button>
-            <Button variant="outlined" size="large" onClick={handleClearFilters}>
-              Clear All
-            </Button>
-          </Box>
-        </Paper>
+        <FilterSection
+          filters={filters}
+          fromDate={fromDate}
+          toDate={toDate}
+          availableTypes={availableTypes}
+          onFilterChange={handleFilterChange}
+          onApplyFilters={handleApplyFilters}
+          onClearFilters={handleClearFilters}
+          onClose={() => setShowFilters(false)}
+          hasActiveFilters={hasActiveFilters}
+        />
       </Collapse>
 
       {/* Floating Action Button */}
@@ -356,69 +239,134 @@ const Dashboard: React.FC = () => {
         <Alert severity="error" sx={{ mb: 3 }} variant="filled">{error}</Alert>
       )}
 
+      {/* Summary Section */}
+      {expenses.length > 0 && summary && (
+        <Paper sx={{ 
+          p: 3, 
+          mb: 3, 
+          borderRadius: 3, 
+          background: COLORS.gradients.primary,
+          boxShadow: BOX_SHADOWS.card,
+        }} elevation={0}>
+          <Typography variant="h6" fontWeight={600} gutterBottom sx={{ color: COLORS.text.secondary }}>
+            Transaction Summary
+          </Typography>
+          <Box display="flex" flexWrap="wrap" gap={3} mt={2}>
+            <Box flex="1 1 200px">
+              <Typography variant="body2" sx={{ color: COLORS.text.tertiary, mb: 0.5 }}>
+                Total Transactions
+              </Typography>
+              <Typography variant="h4" fontWeight="bold" sx={{ color: COLORS.text.primary }}>
+                {expenses.length}
+              </Typography>
+            </Box>
+            <Box flex="1 1 200px">
+              <Typography variant="body2" sx={{ color: COLORS.text.tertiary, mb: 0.5 }}>
+                Total Income
+              </Typography>
+              <Typography variant="h4" fontWeight="bold" sx={{ color: COLORS.income.main }}>
+                {formatCurrency(summary.total_income, summary.currency)}
+              </Typography>
+              <Typography variant="caption" sx={{ color: COLORS.text.quaternary }}>
+                {expenses.filter(e => e.kind === 'income').length} transactions
+              </Typography>
+            </Box>
+            <Box flex="1 1 200px">
+              <Typography variant="body2" sx={{ color: COLORS.text.tertiary, mb: 0.5 }}>
+                Total Expenses
+              </Typography>
+              <Typography variant="h4" fontWeight="bold" sx={{ color: COLORS.expense.main }}>
+                {formatCurrency(summary.total_expense, summary.currency)}
+              </Typography>
+              <Typography variant="caption" sx={{ color: COLORS.text.quaternary }}>
+                {expenses.filter(e => e.kind === 'expense').length} transactions
+              </Typography>
+            </Box>
+            <Box flex="1 1 200px">
+              <Typography variant="body2" sx={{ color: COLORS.text.tertiary, mb: 0.5 }}>
+                Balance
+              </Typography>
+              <Typography variant="h4" fontWeight="bold" sx={{ color: summary.balance >= 0 ? COLORS.income.main : COLORS.expense.main }}>
+                {formatCurrency(Math.abs(summary.balance), summary.currency)}
+              </Typography>
+              <Typography variant="caption" sx={{ color: COLORS.text.quaternary }}>
+                {summary.balance >= 0 ? 'Surplus' : 'Deficit'}
+              </Typography>
+            </Box>
+          </Box>
+        </Paper>
+      )}
+
       <Paper sx={{ p: { xs: 2, sm: 3 }, borderRadius: 2 }} elevation={2}>
         <Typography variant="h5" fontWeight={600} gutterBottom>
-          Recent Transactions
+          Transactions
         </Typography>
         <Divider sx={{ mb: 2 }} />
         {expenses.length > 0 ? (
-          <List sx={{ '& .MuiListItem-root:hover': { bgcolor: 'action.hover' } }}>
-            {expenses.map((expense, index) => (
-              <Fade in={true} timeout={300 + index * 50} key={expense.id}>
-                <ListItem 
-                  divider={index !== expenses.length - 1}
-                  sx={{ 
-                    py: 2,
-                    px: { xs: 1, sm: 2 },
-                    borderRadius: 1,
-                    mb: 0.5,
-                    flexDirection: { xs: 'column', sm: 'row' },
-                    alignItems: { xs: 'flex-start', sm: 'center' }
-                  }}
-                >
-                  <ListItemText
-                    sx={{ width: '100%' }}
-                    primary={
-                      <Box display="flex" justifyContent="space-between" alignItems="center" mb={1} flexWrap="wrap" gap={1}>
-                        <Typography variant="body1" fontWeight={500} sx={{ flex: '1 1 auto' }}>
+          <TableContainer>
+            <Table sx={{ minWidth: 650 }} size="medium">
+              <TableHead>
+                <TableRow sx={{ bgcolor: 'action.hover' }}>
+                  <TableCell sx={{ fontWeight: 600 }}>Date</TableCell>
+                  <TableCell sx={{ fontWeight: 600 }}>Description</TableCell>
+                  <TableCell sx={{ fontWeight: 600 }}>Type</TableCell>
+                  <TableCell sx={{ fontWeight: 600 }}>Kind</TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 600 }}>Amount</TableCell>
+                  <TableCell sx={{ fontWeight: 600 }}>Currency</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {expenses.map((expense, index) => (
+                  <Fade in={true} timeout={300 + index * 50} key={expense.id}>
+                    <TableRow
+                      sx={{ 
+                        '&:hover': { bgcolor: 'action.hover' },
+                        '&:last-child td, &:last-child th': { border: 0 }
+                      }}
+                    >
+                      <TableCell>
+                        <Typography variant="body2" color="text.secondary">
+                          {formatDate(expense.date)}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body1" fontWeight={500}>
                           {expense.description || 'No description'}
                         </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2">
+                          {expense.type}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Chip
+                          label={expense.kind}
+                          size="small"
+                          color={expense.kind === 'income' ? 'success' : 'error'}
+                        />
+                      </TableCell>
+                      <TableCell align="right">
                         <Typography 
-                          variant="h6"
+                          variant="body1"
                           fontWeight={600}
                           color={expense.kind === 'income' ? 'success.main' : 'error.main'}
-                          sx={{ fontSize: { xs: '1rem', sm: '1.25rem' } }}
                         >
                           {expense.kind === 'income' ? '+' : '-'}
                           {formatCurrency(expense.amount, expense.currency)}
                         </Typography>
-                      </Box>
-                    }
-                    secondary={
-                      <Box display="flex" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap={1}>
-                        <Stack direction="row" spacing={1} flexWrap="wrap">
-                          <Chip
-                            label={expense.kind}
-                            size="small"
-                            color={expense.kind === 'income' ? 'success' : 'default'}
-                            variant="outlined"
-                          />
-                          <Chip
-                            label={expense.type}
-                            color={getCategoryColor(expense.type) as any}
-                            size="small"
-                          />
-                        </Stack>
-                        <Typography variant="body2" color="text.secondary">
-                          {formatDate(expense.date)}
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2">
+                          {expense.currency}
                         </Typography>
-                      </Box>
-                    }
-                  />
-                </ListItem>
-              </Fade>
-            ))}
-          </List>
+                      </TableCell>
+                    </TableRow>
+                  </Fade>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
         ) : (
           <Box textAlign="center" py={8}>
             <Typography variant="h6" color="text.secondary" gutterBottom>

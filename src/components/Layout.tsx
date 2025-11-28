@@ -22,6 +22,7 @@ import {
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { COLORS } from '../constants/colors';
 
 const drawerWidth = 240;
 
@@ -53,9 +54,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         sx={{
           width: `calc(100% - ${drawerWidth}px)`,
           ml: `${drawerWidth}px`,
-          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-          color: 'white',
-          boxShadow: '0 4px 20px 0 rgba(0,0,0,0.12)',
+          background: COLORS.gradients.primary,
+          color: COLORS.text.secondary,
+          boxShadow: '0 4px 20px 0 rgba(0,0,0,0.08)',
           backdropFilter: 'blur(10px)',
         }}
       >
@@ -65,27 +66,31 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           </Typography>
           <Stack direction="row" spacing={2} alignItems="center">
             <Avatar sx={{ 
-              bgcolor: 'rgba(255,255,255,0.2)', 
+              bgcolor: '#81FBB8', 
               width: 40, 
               height: 40,
-              border: '2px solid rgba(255,255,255,0.3)',
+              border: '2px solid #28C76F',
               fontWeight: 600,
+              color: '#1a202c',
             }}>
               {state.user?.username?.[0]?.toUpperCase()}
             </Avatar>
-            <Typography variant="body2" sx={{ display: { xs: 'none', sm: 'block' }, fontWeight: 500 }}>
+            <Typography variant="body2" sx={{ display: { xs: 'none', sm: 'block' }, fontWeight: 600, color: '#2d3748' }}>
               {state.user?.username}
             </Typography>
             <Button 
               startIcon={<Logout />} 
               onClick={handleLogout}
               sx={{
-                bgcolor: 'rgba(255,255,255,0.15)',
-                color: 'white',
+                bgcolor: '#ffffff',
+                color: '#2d3748',
                 borderRadius: 2,
                 px: 2,
+                fontWeight: 600,
+                boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
                 '&:hover': {
-                  bgcolor: 'rgba(255,255,255,0.25)',
+                  bgcolor: '#f7fafc',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
                 },
               }}
             >
@@ -103,10 +108,10 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           '& .MuiDrawer-paper': {
             width: drawerWidth,
             boxSizing: 'border-box',
-            background: 'linear-gradient(180deg, #1e293b 0%, #0f172a 100%)',
-            color: 'white',
-            borderRight: 'none',
-            boxShadow: '4px 0 20px rgba(0,0,0,0.15)',
+            background: COLORS.gradients.sidebar,
+            color: COLORS.text.secondary,
+            borderRight: `1px solid ${COLORS.background.border}`,
+            boxShadow: '2px 0 12px rgba(0,0,0,0.08)',
           },
         }}
         variant="permanent"
@@ -117,13 +122,14 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           display: 'flex', 
           alignItems: 'center', 
           gap: 1.5,
-          background: 'rgba(255,255,255,0.05)',
+          background: 'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)',
           borderRadius: 2,
           m: 2,
           mb: 3,
+          boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
         }}>
-          <AccountBalance sx={{ color: '#667eea', fontSize: 36 }} />
-          <Typography variant="h5" sx={{ fontWeight: 800, color: 'white', letterSpacing: 1 }}>
+          <AccountBalance sx={{ color: '#28C76F', fontSize: 36 }} />
+          <Typography variant="h5" sx={{ fontWeight: 800, color: '#2d3748', letterSpacing: 1 }}>
             Mindoh
           </Typography>
         </Box>
@@ -136,16 +142,18 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 sx={{
                   borderRadius: 3,
                   transition: 'all 0.3s ease',
+                  color: '#4a5568',
                   '&.Mui-selected': {
-                    background: 'linear-gradient(90deg, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.08) 100%)',
-                    borderLeft: '4px solid #667eea',
-                    boxShadow: '0 4px 15px rgba(102, 126, 234, 0.2)',
+                    background: 'linear-gradient(90deg, #81FBB8 0%, #28C76F 100%)',
+                    color: '#1a202c',
+                    fontWeight: 600,
+                    boxShadow: '0 4px 12px rgba(40, 199, 111, 0.25)',
                     '&:hover': {
-                      background: 'linear-gradient(90deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0.12) 100%)',
+                      background: 'linear-gradient(90deg, #81FBB8 0%, #28C76F 100%)',
                     },
                   },
                   '&:hover': {
-                    bgcolor: 'rgba(255,255,255,0.08)',
+                    bgcolor: 'rgba(129, 251, 184, 0.15)',
                     transform: 'translateX(4px)',
                   },
                 }}
@@ -171,7 +179,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         component="main"
         sx={{
           flexGrow: 1,
-          background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
+          background: '#f8f9fa',
           minHeight: '100vh',
           pt: 8,
         }}

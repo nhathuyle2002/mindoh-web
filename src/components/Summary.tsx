@@ -8,15 +8,10 @@ import {
   CardContent,
   CircularProgress,
   Alert,
-  TextField,
-  MenuItem,
   Collapse,
   Button,
   Avatar,
 } from '@mui/material';
-import { DatePicker } from '@mui/x-date-pickers/DatePicker';
-import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
-import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { format } from 'date-fns';
 import { 
   FilterList, 
@@ -26,8 +21,10 @@ import {
 } from '@mui/icons-material';
 import { expenseService } from '../services/expenseService';
 import type { ExpenseFilter, ExpenseSummary as ExpenseSummaryType } from '../services/expenseService';
-import { CURRENCIES, CURRENCY_SYMBOLS } from '../constants/currencies';
-import { DATETIME_WITH_TIMEZONE_FORMAT, EXPENSE_KINDS } from '../constants/expense';
+import { CURRENCY_SYMBOLS } from '../constants/currencies';
+import { DATETIME_WITH_TIMEZONE_FORMAT } from '../constants/expense';
+import { COLORS, BOX_SHADOWS } from '../constants/colors';
+import FilterSection from '../common/FilterSection';
 
 const Summary: React.FC = () => {
   const [summary, setSummary] = useState<ExpenseSummaryType | null>(null);
@@ -75,11 +72,17 @@ const Summary: React.FC = () => {
     // eslint-disable-next-line
   }, []);
 
-  const handleFilterChange = (field: keyof ExpenseFilter, value: any) => {
-    setFilters(prev => ({
-      ...prev,
-      [field]: value || undefined,
-    }));
+  const handleFilterChange = (field: keyof ExpenseFilter | 'from_date' | 'to_date', value: any) => {
+    if (field === 'from_date') {
+      setFromDate(value);
+    } else if (field === 'to_date') {
+      setToDate(value);
+    } else {
+      setFilters(prev => ({
+        ...prev,
+        [field]: value || undefined,
+      }));
+    }
   };
 
   const handleApplyFilters = () => {
@@ -115,7 +118,7 @@ const Summary: React.FC = () => {
     fetchSummary({});
   };
 
-  const hasActiveFilters = filters.kind || filters.type || (filters.currencies && filters.currencies.length > 0) || fromDate || toDate;
+  const hasActiveFilters = !!(filters.kind || filters.type || (filters.currencies && filters.currencies.length > 0) || fromDate || toDate);
 
   const formatCurrency = (amount: number, currency: string) => {
     const decimals = currency === 'VND' ? 0 : 2;
@@ -182,21 +185,31 @@ const Summary: React.FC = () => {
           <Box mb={3}>
             <Paper sx={{ 
               p: 3, 
-              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-              color: 'white',
+              background: COLORS.gradients.primary,
               borderRadius: 3,
-              boxShadow: '0 8px 32px rgba(102, 126, 234, 0.3)',
+              boxShadow: BOX_SHADOWS.card,
             }}>
-              <Typography variant="body1" fontWeight={600} gutterBottom>
+              <Typography variant="body1" fontWeight={600} gutterBottom sx={{ color: COLORS.text.secondary }}>
                 Exchange Rates to {baseCurrency}:
               </Typography>
               <Box display="flex" gap={3} flexWrap="wrap" mt={1}>
                 {Object.entries(exchangeRates)
                   .filter(([curr]) => curr !== baseCurrency)
                   .map(([currency, rate]) => (
-                    <Typography key={currency} variant="body2" sx={{ opacity: 0.95 }}>
-                      1 {currency} = {rate.toLocaleString()} {CURRENCY_SYMBOLS[baseCurrency] || baseCurrency}
-                    </Typography>
+                    <Box 
+                      key={currency} 
+                      sx={{ 
+                        bgcolor: '#ffffff',
+                        px: 2,
+                        py: 1,
+                        borderRadius: 2,
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+                      }}
+                    >
+                      <Typography variant="body2" sx={{ color: '#4a5568', fontWeight: 500 }}>
+                        1 {currency} = {rate.toLocaleString()} {CURRENCY_SYMBOLS[baseCurrency] || baseCurrency}
+                      </Typography>
+                    </Box>
                   ))}
               </Box>
             </Paper>
@@ -206,19 +219,19 @@ const Summary: React.FC = () => {
         {/* Filter Section */}
         <Box display="flex" gap={2} mb={3} flexWrap="wrap">
           <Button 
-            variant={showFilters ? "contained" : "outlined"}
+            variant="outlined"
             startIcon={<FilterList />} 
             onClick={() => setShowFilters(!showFilters)}
-            color={hasActiveFilters ? "primary" : "inherit"}
-            size="medium"
+            size="small"
             sx={{
-              borderRadius: 3,
-              px: 3,
-              boxShadow: showFilters ? '0 4px 12px rgba(102, 126, 234, 0.3)' : 'none',
-              transition: 'all 0.3s ease',
+              borderRadius: 2,
+              fontWeight: 600,
+              fontSize: '0.875rem',
+              color: COLORS.text.secondary,
+              borderColor: COLORS.background.border,
               '&:hover': {
-                transform: 'translateY(-2px)',
-                boxShadow: '0 6px 16px rgba(102, 126, 234, 0.4)',
+                borderColor: COLORS.text.tertiary,
+                bgcolor: COLORS.background.hover,
               },
             }}
           >
@@ -227,129 +240,17 @@ const Summary: React.FC = () => {
         </Box>
 
         <Collapse in={showFilters}>
-          <Paper sx={{ 
-            p: 3, 
-            mb: 3,
-            borderRadius: 3,
-            boxShadow: '0 8px 32px rgba(0,0,0,0.08)',
-            border: '1px solid',
-            borderColor: 'divider',
-          }}>
-            <Box display="flex" flexDirection="column" gap={2}>
-              <Box display="flex" gap={2} flexWrap="wrap">
-                <TextField
-                  sx={{ flex: '1 1 200px' }}
-                  select
-                  label="Kind"
-                  value={filters.kind || ''}
-                  onChange={(e) => handleFilterChange('kind', e.target.value)}
-                  size="small"
-                >
-                  <MenuItem value="">All</MenuItem>
-                  {EXPENSE_KINDS.map((kind) => (
-                    <MenuItem key={kind} value={kind}>
-                      {kind.charAt(0).toUpperCase() + kind.slice(1)}
-                    </MenuItem>
-                  ))}
-                </TextField>
-
-                <TextField
-                  sx={{ flex: '1 1 200px' }}
-                  select
-                  label="Type"
-                  value={filters.type || ''}
-                  onChange={(e) => handleFilterChange('type', e.target.value)}
-                  size="small"
-                >
-                  <MenuItem value="">All</MenuItem>
-                  {availableTypes.map((type) => (
-                    <MenuItem key={type} value={type}>
-                      {type}
-                    </MenuItem>
-                  ))}
-                </TextField>
-
-                <TextField
-                  sx={{ flex: '1 1 200px' }}
-                  select
-                  label="Currencies"
-                  value={filters.currencies || []}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    handleFilterChange('currencies', typeof value === 'string' ? value.split(',') : value);
-                  }}
-                  SelectProps={{
-                    multiple: true,
-                    renderValue: (selected) => (selected as string[]).join(', '),
-                  }}
-                  size="small"
-                >
-                  {CURRENCIES.map((currency) => (
-                    <MenuItem key={currency} value={currency}>
-                      {currency}
-                    </MenuItem>
-                  ))}
-                </TextField>
-
-                <TextField
-                  sx={{ flex: '1 1 200px' }}
-                  select
-                  label="Default Currency"
-                  value={filters.default_currency || 'VND'}
-                  onChange={(e) => handleFilterChange('default_currency', e.target.value)}
-                  size="small"
-                  helperText="For conversion"
-                >
-                  {CURRENCIES.map((currency) => (
-                    <MenuItem key={currency} value={currency}>
-                      {currency}
-                    </MenuItem>
-                  ))}
-                </TextField>
-              </Box>
-
-              <LocalizationProvider dateAdapter={AdapterDateFns}>
-                <Box display="flex" gap={2} flexWrap="wrap">
-                  <DatePicker
-                    label="From Date"
-                    value={fromDate}
-                    onChange={(date) => setFromDate(date)}
-                    slotProps={{ textField: { size: 'small', sx: { flex: '1 1 200px' } } }}
-                  />
-                  <DatePicker
-                    label="To Date"
-                    value={toDate}
-                    onChange={(date) => setToDate(date)}
-                    slotProps={{ textField: { size: 'small', sx: { flex: '1 1 200px' } } }}
-                  />
-                </Box>
-              </LocalizationProvider>
-
-              <Box display="flex" gap={2} justifyContent="flex-end">
-                <Button 
-                  variant="outlined" 
-                  onClick={handleClearFilters}
-                  sx={{ borderRadius: 2, px: 3 }}
-                >
-                  Clear
-                </Button>
-                <Button 
-                  variant="contained" 
-                  onClick={handleApplyFilters}
-                  sx={{ 
-                    borderRadius: 2, 
-                    px: 3,
-                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                    '&:hover': {
-                      background: 'linear-gradient(135deg, #5568d3 0%, #6b3f8e 100%)',
-                    },
-                  }}
-                >
-                  Apply Filters
-                </Button>
-              </Box>
-            </Box>
-          </Paper>
+          <FilterSection
+            filters={filters}
+            fromDate={fromDate}
+            toDate={toDate}
+            availableTypes={availableTypes}
+            onFilterChange={handleFilterChange}
+            onApplyFilters={handleApplyFilters}
+            onClearFilters={handleClearFilters}
+            onClose={() => setShowFilters(false)}
+            hasActiveFilters={hasActiveFilters}
+          />
         </Collapse>
 
         {error && (
@@ -471,44 +372,44 @@ const Summary: React.FC = () => {
               <Card sx={{ 
                 flex: { xs: '1 1 100%', md: '1 1 calc(33.333% - 16px)' },
                 minWidth: '280px',
-                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', 
-                color: 'white',
-                borderRadius: 4,
-                boxShadow: '0 10px 40px rgba(102, 126, 234, 0.3)',
+                background: 'linear-gradient(135deg, #81FBB8 0%, #28C76F 100%)', 
+                color: '#1a202c',
+                borderRadius: 3,
+                boxShadow: '0 8px 32px rgba(40, 199, 111, 0.25)',
                 transition: 'transform 0.3s ease, box-shadow 0.3s ease',
                 '&:hover': {
-                  transform: 'translateY(-8px)',
-                  boxShadow: '0 20px 60px rgba(102, 126, 234, 0.4)',
+                  transform: 'translateY(-5px)',
+                  boxShadow: '0 12px 48px rgba(40, 199, 111, 0.35)',
                 },
               }}>
                 <CardContent>
                   <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={2}>
                     <Box>
-                      <Typography variant="body2" sx={{ opacity: 0.9, mb: 1 }}>
+                      <Typography variant="body2" sx={{ color: '#2d3748', mb: 1, fontWeight: 500 }}>
                         Total Income
                       </Typography>
-                      <Typography variant="h4" fontWeight="bold">
+                      <Typography variant="h4" fontWeight="bold" sx={{ color: '#1a202c' }}>
                         {formatCurrency(totals.converted.income, totals.converted.currency)}
                       </Typography>
                     </Box>
-                    <Avatar sx={{ bgcolor: 'rgba(255,255,255,0.25)', width: 48, height: 48 }}>
+                    <Avatar sx={{ bgcolor: 'rgba(26, 32, 44, 0.1)', width: 48, height: 48, color: '#1a202c' }}>
                       <TrendingUp />
                     </Avatar>
                   </Box>
                   <Box sx={{ 
                     mt: 3, 
                     pt: 2, 
-                    borderTop: '1px solid rgba(255,255,255,0.2)',
+                    borderTop: '2px solid rgba(26, 32, 44, 0.1)',
                   }}>
-                    <Typography variant="caption" sx={{ opacity: 0.8, mb: 1.5, display: 'block' }}>
+                    <Typography variant="caption" sx={{ color: '#4a5568', mb: 1.5, display: 'block', fontWeight: 500 }}>
                       By Currency:
                     </Typography>
                     {Object.entries(totals.byCurrency).map(([currency, data]) => (
                       <Box key={currency} display="flex" justifyContent="space-between" mb={0.5}>
-                        <Typography variant="body2" sx={{ opacity: 0.9 }}>
+                        <Typography variant="body2" sx={{ color: '#2d3748' }}>
                           {currency}
                         </Typography>
-                        <Typography variant="body2" fontWeight={500}>
+                        <Typography variant="body2" fontWeight={500} sx={{ color: '#1a202c' }}>
                           {formatCurrency(data.income, currency)}
                         </Typography>
                       </Box>
@@ -521,27 +422,27 @@ const Summary: React.FC = () => {
               <Card sx={{ 
                 flex: { xs: '1 1 100%', md: '1 1 calc(33.333% - 16px)' },
                 minWidth: '280px',
-                background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)', 
-                color: 'white',
-                borderRadius: 4,
-                boxShadow: '0 10px 40px rgba(240, 147, 251, 0.3)',
+                background: 'linear-gradient(135deg, #FFB4B4 0%, #EA5455 100%)', 
+                color: '#1a202c',
+                borderRadius: 3,
+                boxShadow: '0 8px 32px rgba(234, 84, 85, 0.25)',
                 transition: 'transform 0.3s ease, box-shadow 0.3s ease',
                 '&:hover': {
-                  transform: 'translateY(-8px)',
-                  boxShadow: '0 20px 60px rgba(240, 147, 251, 0.4)',
+                  transform: 'translateY(-5px)',
+                  boxShadow: '0 12px 48px rgba(234, 84, 85, 0.35)',
                 },
               }}>
                 <CardContent>
                   <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={2}>
                     <Box>
-                      <Typography variant="body2" sx={{ opacity: 0.9, mb: 1 }}>
+                      <Typography variant="body2" sx={{ color: '#2d3748', mb: 1, fontWeight: 500 }}>
                         Total Expenses
                       </Typography>
-                      <Typography variant="h4" fontWeight="bold">
+                      <Typography variant="h4" fontWeight="bold" sx={{ color: '#1a202c' }}>
                         {formatCurrency(totals.converted.expense, totals.converted.currency)}
                       </Typography>
                     </Box>
-                    <Avatar sx={{ bgcolor: 'rgba(255,255,255,0.25)', width: 48, height: 48 }}>
+                    <Avatar sx={{ bgcolor: 'rgba(26, 32, 44, 0.1)', width: 48, height: 48, color: '#1a202c' }}>
                       <TrendingDown />
                     </Avatar>
                   </Box>
@@ -572,52 +473,52 @@ const Summary: React.FC = () => {
                 flex: { xs: '1 1 100%', md: '1 1 calc(33.333% - 16px)' },
                 minWidth: '280px',
                 background: totals.converted.balance >= 0 
-                  ? 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)' 
-                  : 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)', 
-                color: 'white',
-                borderRadius: 4,
+                  ? 'linear-gradient(135deg, #89CFF0 0%, #4FC3F7 100%)' 
+                  : 'linear-gradient(135deg, #FFD93D 0%, #FFA726 100%)', 
+                color: '#1a202c',
+                borderRadius: 3,
                 boxShadow: totals.converted.balance >= 0
-                  ? '0 10px 40px rgba(79, 172, 254, 0.3)'
-                  : '0 10px 40px rgba(250, 112, 154, 0.3)',
+                  ? '0 8px 32px rgba(79, 195, 247, 0.25)'
+                  : '0 8px 32px rgba(255, 167, 38, 0.25)',
                 transition: 'transform 0.3s ease, box-shadow 0.3s ease',
                 '&:hover': {
-                  transform: 'translateY(-8px)',
+                  transform: 'translateY(-5px)',
                   boxShadow: totals.converted.balance >= 0
-                    ? '0 20px 60px rgba(79, 172, 254, 0.4)'
-                    : '0 20px 60px rgba(250, 112, 154, 0.4)',
+                    ? '0 12px 48px rgba(79, 195, 247, 0.35)'
+                    : '0 12px 48px rgba(255, 167, 38, 0.35)',
                 },
               }}>
                 <CardContent>
                   <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={2}>
                     <Box>
-                      <Typography variant="body2" sx={{ opacity: 0.9, mb: 1 }}>
+                      <Typography variant="body2" sx={{ color: '#2d3748', mb: 1, fontWeight: 500 }}>
                         Balance
                       </Typography>
-                      <Typography variant="h4" fontWeight="bold">
+                      <Typography variant="h4" fontWeight="bold" sx={{ color: '#1a202c' }}>
                         {formatCurrency(Math.abs(totals.converted.balance), totals.converted.currency)}
                       </Typography>
-                      <Typography variant="caption" sx={{ opacity: 0.9 }}>
+                      <Typography variant="caption" sx={{ color: '#4a5568', fontWeight: 500 }}>
                         {totals.converted.balance >= 0 ? 'Surplus' : 'Deficit'}
                       </Typography>
                     </Box>
-                    <Avatar sx={{ bgcolor: 'rgba(255,255,255,0.25)', width: 48, height: 48 }}>
+                    <Avatar sx={{ bgcolor: 'rgba(26, 32, 44, 0.1)', width: 48, height: 48, color: '#1a202c' }}>
                       <AccountBalance />
                     </Avatar>
                   </Box>
                   <Box sx={{ 
                     mt: 3, 
                     pt: 2, 
-                    borderTop: '1px solid rgba(255,255,255,0.2)',
+                    borderTop: '2px solid rgba(26, 32, 44, 0.1)',
                   }}>
-                    <Typography variant="caption" sx={{ opacity: 0.8, mb: 1.5, display: 'block' }}>
+                    <Typography variant="caption" sx={{ color: '#4a5568', mb: 1.5, display: 'block', fontWeight: 500 }}>
                       By Currency:
                     </Typography>
                     {Object.entries(totals.byCurrency).map(([currency, data]) => (
                       <Box key={currency} display="flex" justifyContent="space-between" mb={0.5}>
-                        <Typography variant="body2" sx={{ opacity: 0.9 }}>
+                        <Typography variant="body2" sx={{ color: '#2d3748' }}>
                           {currency}
                         </Typography>
-                        <Typography variant="body2" fontWeight={500}>
+                        <Typography variant="body2" fontWeight={500} sx={{ color: '#1a202c' }}>
                           {formatCurrency(Math.abs(data.balance), currency)} {data.balance >= 0 ? '↑' : '↓'}
                         </Typography>
                       </Box>

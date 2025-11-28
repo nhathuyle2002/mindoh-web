@@ -19,6 +19,7 @@ import { expenseService } from '../services/expenseService';
 import type { ExpenseRequest } from '../types/api';
 import { CURRENCIES } from '../constants/currencies';
 import { EXPENSE_KINDS } from '../constants/expense';
+import { COLORS, BOX_SHADOWS } from '../constants/colors';
 
 interface AddExpenseProps {
   onExpenseAdded?: () => void;
@@ -111,18 +112,29 @@ const AddExpense: React.FC<AddExpenseProps> = ({ onExpenseAdded, onClose }) => {
 
   return (
     <Container maxWidth="md">
-      <Paper elevation={0} sx={{ p: 4, position: 'relative' }}>
+      <Paper elevation={0} sx={{ 
+        p: 4, 
+        position: 'relative',
+        borderRadius: 3,
+        background: COLORS.background.paper,
+        boxShadow: BOX_SHADOWS.card,
+      }}>
         <IconButton
           onClick={onClose}
           sx={{
             position: 'absolute',
             right: 8,
             top: 8,
+            color: COLORS.text.tertiary,
+            '&:hover': {
+              bgcolor: COLORS.background.hover,
+              color: COLORS.text.primary,
+            },
           }}
         >
           <Close />
         </IconButton>
-        <Typography variant="h5" gutterBottom fontWeight={600} mb={3}>
+        <Typography variant="h5" gutterBottom fontWeight={600} mb={3} sx={{ color: COLORS.text.primary }}>
           Add New Transaction
         </Typography>
         {error && (
@@ -228,7 +240,16 @@ const AddExpense: React.FC<AddExpenseProps> = ({ onExpenseAdded, onClose }) => {
               fullWidth
               disabled={loading}
               size="large"
-              sx={{ mt: 1 }}
+              sx={{ 
+                mt: 1,
+                background: COLORS.gradients.income,
+                color: COLORS.text.primary,
+                fontWeight: 600,
+                boxShadow: BOX_SHADOWS.income,
+                '&:hover': {
+                  boxShadow: BOX_SHADOWS.incomeHover,
+                },
+              }}
             >
               {loading ? <CircularProgress size={24} /> : 'Add Transaction'}
             </Button>
