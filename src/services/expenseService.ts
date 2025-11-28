@@ -12,9 +12,27 @@ export type ExpenseFilter = {
   user_id?: number;
   kind?: ExpenseKind;
   type?: string;
-  currency?: string;
+  currencies?: string[];  // Changed from currency to currencies (array)
+  default_currency?: string;  // Add default currency for conversion
   from?: string;
   to?: string;
+};
+
+export type CurrencySummary = {
+  total_income: number;
+  total_expense: number;
+  balance: number;
+  total_by_type: Record<string, number>;
+};
+
+export type ExpenseSummary = {
+  expenses: Expense[];
+  currency: string;              // VND if converted, or specific currency if filtered
+  total_income: number;
+  total_expense: number;
+  balance: number;
+  total_by_type: Record<string, number>;
+  by_currency?: Record<string, CurrencySummary>;  // Only present when no currency filter
 };
 
 export const expenseService = {
@@ -50,5 +68,25 @@ export const expenseService = {
       }
     });
     return Array.from(types).sort();
+  },
+
+  async getSummary(filters?: ExpenseFilter): Promise<ExpenseSummary> {
+    const token = getAuthToken();
+    const response = await apiClient.get<ExpenseSummary>('/expenses/summary', {
+      params: filters,
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    return response.data;
+  },
+
+  async getExchangeRates(): Promise<{ base_currency: string; rates: Record<string, number> }> {
+    const token = getAuthToken();
+    const response = await apiClient.get<{ base_currency: string; rates: Record<string, number> }>(
+      '/expenses/exchange-rates',
+      {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      }
+    );
+    return response.data;
   },
 };

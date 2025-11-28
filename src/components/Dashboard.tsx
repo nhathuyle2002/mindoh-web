@@ -4,8 +4,6 @@ import {
   Paper,
   Typography,
   Box,
-  Card,
-  CardContent,
   List,
   ListItem,
   ListItemText,
@@ -19,13 +17,10 @@ import {
   MenuItem,
   IconButton,
   Collapse,
-  AppBar,
-  Toolbar,
   Divider,
-  Avatar,
-  Stack,
   Fade,
   Fab,
+  Stack,
 } from '@mui/material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
@@ -35,14 +30,9 @@ import {
   FilterList, 
   Close, 
   Add, 
-  TrendingUp, 
-  TrendingDown, 
-  AccountBalance,
-  Logout,
 } from '@mui/icons-material';
-import { useAuth } from '../contexts/AuthContext';
 import { expenseService } from '../services/expenseService';
-import type { ExpenseFilter } from '../services/expenseService';
+import type { ExpenseFilter, ExpenseSummary } from '../services/expenseService';
 import type { Expense, ExpenseKind } from '../types/api';
 import AddExpense from './AddExpense';
 import { useNavigate } from 'react-router-dom';
@@ -50,8 +40,8 @@ import { CURRENCIES, CURRENCY_SYMBOLS } from '../constants/currencies';
 import { DATETIME_WITH_TIMEZONE_FORMAT } from '../constants/expense';
 
 const Dashboard: React.FC = () => {
-  const { state } = useAuth();
   const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [summary, setSummary] = useState<ExpenseSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
@@ -63,7 +53,8 @@ const Dashboard: React.FC = () => {
   const [filters, setFilters] = useState<ExpenseFilter>({
     kind: undefined,
     type: undefined,
-    currency: undefined,
+    currencies: undefined,
+    default_currency: 'VND',
     from: undefined,
     to: undefined,
   });
@@ -76,14 +67,20 @@ const Dashboard: React.FC = () => {
   const fetchExpenses = async (filterParams?: ExpenseFilter) => {
     setLoading(true);
     setError(null);
-    let expensesData: Expense[] = [];
+    let summaryData: ExpenseSummary | null = null;
     let errorMsg: string | null = null;
     try {
-      expensesData = await expenseService.getExpenses(filterParams);
+      summaryData = await expenseService.getSummary(filterParams);
     } catch (err: any) {
       errorMsg = err.response?.data?.message || 'Failed to fetch expenses';
     }
-    setExpenses(expensesData);
+    if (summaryData) {
+      setExpenses(summaryData.expenses);
+      setSummary(summaryData);
+    } else {
+      setExpenses([]);
+      setSummary(null);
+    }
     setError(errorMsg);
     setLoading(false);
   };
@@ -110,7 +107,8 @@ const Dashboard: React.FC = () => {
     const cleanFilters: ExpenseFilter = {};
     if (filters.kind) cleanFilters.kind = filters.kind;
     if (filters.type) cleanFilters.type = filters.type;
-    if (filters.currency) cleanFilters.currency = filters.currency;
+    if (filters.currencies && filters.currencies.length > 0) cleanFilters.currencies = filters.currencies;
+    if (filters.default_currency) cleanFilters.default_currency = filters.default_currency;
     if (fromDate) {
       // Set to start of day (00:00:00) in local timezone
       const startOfDay = new Date(fromDate);
@@ -134,7 +132,8 @@ const Dashboard: React.FC = () => {
     setFilters({
       kind: undefined,
       type: undefined,
-      currency: undefined,
+      currencies: undefined,
+      default_currency: 'VND',
       from: undefined,
       to: undefined,
     });
@@ -143,18 +142,14 @@ const Dashboard: React.FC = () => {
     fetchExpenses({});
   };
 
-  const hasActiveFilters = filters.kind || filters.type || filters.currency || fromDate || toDate;
-
-  const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    navigate('/login');
-  };
+  const hasActiveFilters = filters.kind || filters.type || (filters.currencies && filters.currencies.length > 0) || fromDate || toDate;
 
   const formatCurrency = (amount: number, currency: string) => {
+    // VND doesn't use decimal places
+    const decimals = currency === 'VND' ? 0 : 2;
     const formatted = new Intl.NumberFormat('en-US', {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
+      minimumFractionDigits: decimals,
+      maximumFractionDigits: decimals,
     }).format(amount);
     const symbol = CURRENCY_SYMBOLS[currency] || currency;
     return `${formatted} ${symbol}`;
@@ -184,26 +179,6 @@ const Dashboard: React.FC = () => {
     return colors[category.toLowerCase()] || 'default';
   };
 
-  const calculateTotals = () => {
-    const income = expenses
-      .filter(e => e.kind === 'income')
-      .reduce((sum, e) => sum + e.amount, 0);
-    const expense = expenses
-      .filter(e => e.kind === 'expense')
-      .reduce((sum, e) => sum + e.amount, 0);
-    // Get the most common currency from expenses
-    const currencyCounts = expenses.reduce((acc, e) => {
-      acc[e.currency] = (acc[e.currency] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
-    const primaryCurrency = Object.keys(currencyCounts).length > 0
-      ? Object.entries(currencyCounts).sort((a, b) => b[1] - a[1])[0][0]
-      : 'VND';
-    return { income, expense, balance: income - expense, currency: primaryCurrency };
-  };
-
-  const totals = calculateTotals();
-
   if (loading) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="80vh">
@@ -214,108 +189,7 @@ const Dashboard: React.FC = () => {
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', bgcolor: '#f5f5f5' }}>
-      <AppBar position="sticky" elevation={0} sx={{ bgcolor: 'white', color: 'text.primary', borderBottom: 1, borderColor: 'divider' }}>
-        <Toolbar>
-          <AccountBalance sx={{ mr: 2, color: 'primary.main' }} />
-          <Typography variant="h6" component="div" sx={{ flexGrow: 1, fontWeight: 600 }}>
-            Mindoh Finance
-          </Typography>
-          <Stack direction="row" spacing={2} alignItems="center">
-            <Avatar sx={{ bgcolor: 'primary.main', width: 36, height: 36 }}>
-              {state.user?.username?.[0]?.toUpperCase()}
-            </Avatar>
-            <Typography variant="body2" sx={{ display: { xs: 'none', sm: 'block' } }}>
-              {state.user?.username}
-            </Typography>
-            <Button 
-              startIcon={<Logout />} 
-              onClick={handleLogout}
-              sx={{ ml: 2 }}
-            >
-              Logout
-            </Button>
-          </Stack>
-        </Toolbar>
-      </AppBar>
-
       <Container maxWidth={false} disableGutters sx={{ mt: 4, mb: 4, flexGrow: 1, px: { xs: 2, sm: 3, md: 4 } }}>
-        {/* Stats Cards */}
-        <Box display="flex" flexWrap="wrap" gap={2} mb={3}>
-          <Card sx={{ 
-            flex: { xs: '1 1 100%', sm: '1 1 calc(50% - 8px)', md: '1 1 calc(33.333% - 11px)' },
-            minWidth: '250px',
-            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', 
-            color: 'white' 
-          }}>
-            <CardContent>
-              <Box display="flex" justifyContent="space-between" alignItems="flex-start">
-                <Box>
-                  <Typography variant="body2" sx={{ opacity: 0.9, mb: 1 }}>
-                    Total Income
-                  </Typography>
-                  <Typography variant="h4" fontWeight="bold" sx={{ fontSize: { xs: '1.5rem', md: '2.125rem' } }}>
-                    {formatCurrency(totals.income, totals.currency)}
-                  </Typography>
-                </Box>
-                <Avatar sx={{ bgcolor: 'rgba(255,255,255,0.3)' }}>
-                  <TrendingUp />
-                </Avatar>
-              </Box>
-            </CardContent>
-          </Card>
-
-          <Card sx={{ 
-            flex: { xs: '1 1 100%', sm: '1 1 calc(50% - 8px)', md: '1 1 calc(33.333% - 11px)' },
-            minWidth: '250px',
-            background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)', 
-            color: 'white' 
-          }}>
-            <CardContent>
-              <Box display="flex" justifyContent="space-between" alignItems="flex-start">
-                <Box>
-                  <Typography variant="body2" sx={{ opacity: 0.9, mb: 1 }}>
-                    Total Expenses
-                  </Typography>
-                  <Typography variant="h4" fontWeight="bold" sx={{ fontSize: { xs: '1.5rem', md: '2.125rem' } }}>
-                    {formatCurrency(totals.expense, totals.currency)}
-                  </Typography>
-                </Box>
-                <Avatar sx={{ bgcolor: 'rgba(255,255,255,0.3)' }}>
-                  <TrendingDown />
-                </Avatar>
-              </Box>
-            </CardContent>
-          </Card>
-
-          <Card sx={{ 
-            flex: { xs: '1 1 100%', sm: '1 1 calc(50% - 8px)', md: '1 1 calc(33.333% - 11px)' },
-            minWidth: '250px',
-            background: totals.balance >= 0 
-              ? 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)' 
-              : 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)', 
-            color: 'white' 
-          }}>
-            <CardContent>
-              <Box display="flex" justifyContent="space-between" alignItems="flex-start">
-                <Box>
-                  <Typography variant="body2" sx={{ opacity: 0.9, mb: 1 }}>
-                    Balance
-                  </Typography>
-                  <Typography variant="h4" fontWeight="bold" sx={{ fontSize: { xs: '1.5rem', md: '2.125rem' } }}>
-                    {formatCurrency(Math.abs(totals.balance), totals.currency)}
-                  </Typography>
-                  <Typography variant="caption">
-                    {totals.balance >= 0 ? 'Surplus' : 'Deficit'}
-                  </Typography>
-                </Box>
-                <Avatar sx={{ bgcolor: 'rgba(255,255,255,0.3)' }}>
-                  <AccountBalance />
-                </Avatar>
-              </Box>
-            </CardContent>
-          </Card>
-        </Box>
-
         {/* Filter Section */}
         <Box display="flex" gap={2} mb={2} flexWrap="wrap">
           <Button 
@@ -374,12 +248,35 @@ const Dashboard: React.FC = () => {
               <TextField
                 select
                 fullWidth
-                label="Currency"
-                value={filters.currency || ''}
-                onChange={(e) => handleFilterChange('currency', e.target.value)}
+                label="Currencies"
+                value={filters.currencies || []}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  handleFilterChange('currencies', typeof value === 'string' ? value.split(',') : value);
+                }}
+                SelectProps={{
+                  multiple: true,
+                  renderValue: (selected) => (selected as string[]).join(', '),
+                }}
                 size="small"
               >
-                <MenuItem value="">All</MenuItem>
+                {CURRENCIES.map((currency) => (
+                  <MenuItem key={currency} value={currency}>
+                    {currency}
+                  </MenuItem>
+                ))}
+              </TextField>
+            </Box>
+            <Box flex="1 1 200px" minWidth={{ xs: '100%', sm: '200px' }}>
+              <TextField
+                select
+                fullWidth
+                label="Default Currency"
+                value={filters.default_currency || 'VND'}
+                onChange={(e) => handleFilterChange('default_currency', e.target.value)}
+                size="small"
+                helperText="For conversion when no currency filter"
+              >
                 {CURRENCIES.map((currency) => (
                   <MenuItem key={currency} value={currency}>
                     {currency}

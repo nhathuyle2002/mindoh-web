@@ -4,6 +4,8 @@ import { AuthProvider } from './contexts/AuthContext';
 import Login from './components/Login';
 import Register from './components/Register';
 import Dashboard from './components/Dashboard';
+import Summary from './components/Summary';
+import Layout from './components/Layout';
 import AddExpense from './components/AddExpense';
 import ProtectedRoute from './components/ProtectedRoute';
 
@@ -22,7 +24,19 @@ function App() {
               path="/dashboard"
               element={
                 <ProtectedRoute>
-                  <Dashboard />
+                  <Layout>
+                    <Dashboard />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/summary"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <Summary />
+                  </Layout>
                 </ProtectedRoute>
               }
             />
@@ -34,7 +48,7 @@ function App() {
                 </ProtectedRoute>
               }
             />
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            <Route path="/" element={<Navigate to="/summary" replace />} />
           </Routes>
         </Router>
       </AuthProvider>

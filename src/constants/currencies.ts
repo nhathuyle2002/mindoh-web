@@ -7,3 +7,5 @@ export const CURRENCY_SYMBOLS: Record<string, string> = {
   USD: '$',
   EUR: '€',
 };
+
+export const DEFAULT_CURRENCY = 'VND';
