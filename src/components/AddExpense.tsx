@@ -16,17 +16,19 @@ import { Close } from '@mui/icons-material';
 import { LocalizationProvider, DatePicker } from '@mui/x-date-pickers';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { expenseService } from '../services/expenseService';
-import type { ExpenseRequest } from '../types/api';
+import type { ExpenseRequest, Expense } from '../types/api';
 import { CURRENCIES } from '../constants/currencies';
 import { EXPENSE_KINDS } from '../constants/expense';
 import { COLORS, BOX_SHADOWS } from '../constants/colors';
+import { getTodayDate, formatDateToYYYYMMDD, parseDateFromYYYYMMDD } from '../common/utils/dateUtils';
 
 interface AddExpenseProps {
+  expense?: Expense | null;
   onExpenseAdded?: () => void;
   onClose?: () => void;
 }
 
-const AddExpense: React.FC<AddExpenseProps> = ({ onExpenseAdded, onClose }) => {
+const AddExpense: React.FC<AddExpenseProps> = ({ expense, onExpenseAdded, onClose }) => {
   // Get user from localStorage
   const getUserId = () => {
     try {
@@ -41,26 +43,44 @@ const AddExpense: React.FC<AddExpenseProps> = ({ onExpenseAdded, onClose }) => {
     return 0;
   };
 
-  // Initialize date to today at 00:00:00
-  const getTodayAtMidnight = () => {
-    const date = new Date();
-    date.setHours(0, 0, 0, 0);
-    return date.toISOString();
-  };
-
   const [formData, setFormData] = useState<ExpenseRequest>({
     user_id: getUserId(),
-    amount: 0,
-    description: '',
-    kind: 'expense',
-    type: '',
-    currency: 'VND',
-    date: getTodayAtMidnight(),
+    amount: expense?.amount || 0,
+    description: expense?.description || '',
+    kind: expense?.kind || 'expense',
+    type: expense?.type || '',
+    currency: expense?.currency || 'VND',
+    date: expense?.date || getTodayDate(),
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [availableTypes, setAvailableTypes] = useState<string[]>([]);
+
+  // Update formData when expense prop changes
+  useEffect(() => {
+    if (expense) {
+      setFormData({
+        user_id: expense.user_id,
+        amount: expense.amount,
+        description: expense.description || '',
+        kind: expense.kind,
+        type: expense.type,
+        currency: expense.currency,
+        date: expense.date,
+      });
+    } else {
+      setFormData({
+        user_id: getUserId(),
+        amount: 0,
+        description: '',
+        kind: 'expense',
+        type: '',
+        currency: 'VND',
+        date: getTodayDate(),
+      });
+    }
+  }, [expense]);
 
   // Update user_id if localStorage changes (e.g., login/logout)
   useEffect(() => {
@@ -77,16 +97,26 @@ const AddExpense: React.FC<AddExpenseProps> = ({ onExpenseAdded, onClose }) => {
     setSuccess(false);
 
     try {
-      // Normalize date to start of day (00:00:00)
-      const date = new Date(formData.date);
-      date.setHours(0, 0, 0, 0);
+      // Convert date to YYYY-MM-DD format
+      const dateStr = typeof formData.date === 'string' 
+        ? formData.date 
+        : formatDateToYYYYMMDD(new Date(formData.date));
       
-      await expenseService.createExpense({ 
+      const expenseData = { 
         ...formData, 
         user_id: getUserId(), 
         type: formData.type.trim(),
-        date: date.toISOString() 
-      });
+        date: dateStr
+      };
+
+      if (expense) {
+        // Update existing expense
+        await expenseService.updateExpense(expense.id, expenseData);
+      } else {
+        // Create new expense
+        await expenseService.createExpense(expenseData);
+      }
+      
       setSuccess(true);
       setFormData({
         user_id: getUserId(),
@@ -95,7 +125,7 @@ const AddExpense: React.FC<AddExpenseProps> = ({ onExpenseAdded, onClose }) => {
         kind: 'expense',
         type: '',
         currency: 'VND',
-        date: getTodayAtMidnight(),
+        date: getTodayDate(),
       });
       if (onExpenseAdded) {
         onExpenseAdded();
@@ -143,13 +173,15 @@ const AddExpense: React.FC<AddExpenseProps> = ({ onExpenseAdded, onClose }) => {
           <Close />
         </IconButton>
         <Typography variant="h5" gutterBottom fontWeight={600} mb={3} sx={{ color: COLORS.text.primary }}>
-          Add New Transaction
+          {expense ? 'Edit Transaction' : 'Add New Transaction'}
         </Typography>
         {error && (
           <Alert severity="error" sx={{ mb: 2 }} variant="filled">{error}</Alert>
         )}
         {success && (
-          <Alert severity="success" sx={{ mb: 2 }} variant="filled">Transaction added successfully!</Alert>
+          <Alert severity="success" sx={{ mb: 2 }} variant="filled">
+            Transaction {expense ? 'updated' : 'added'} successfully!
+          </Alert>
         )}
         <Box component="form" onSubmit={handleSubmit}>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
@@ -242,10 +274,10 @@ const AddExpense: React.FC<AddExpenseProps> = ({ onExpenseAdded, onClose }) => {
             <LocalizationProvider dateAdapter={AdapterDateFns}>
               <DatePicker
                 label="Date"
-                value={formData.date ? new Date(formData.date) : new Date()}
+                value={formData.date ? parseDateFromYYYYMMDD(formData.date) : new Date()}
                 onChange={(date) => {
                   if (date) {
-                    handleChange('date', date);
+                    handleChange('date', formatDateToYYYYMMDD(date));
                   }
                 }}
                 slotProps={{
@@ -273,7 +305,7 @@ const AddExpense: React.FC<AddExpenseProps> = ({ onExpenseAdded, onClose }) => {
                 },
               }}
             >
-              {loading ? <CircularProgress size={24} /> : 'Add Transaction'}
+              {loading ? <CircularProgress size={24} /> : (expense ? 'Update Transaction' : 'Add Transaction')}
             </Button>
           </Box>
         </Box>

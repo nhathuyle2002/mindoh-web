@@ -20,17 +20,18 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  IconButton,
+  Tooltip,
 } from '@mui/material';
-import { format } from 'date-fns';
-import { FilterList, Add } from '@mui/icons-material';
+import { FilterList, Add, Edit, Delete } from '@mui/icons-material';
 import { expenseService } from '../services/expenseService';
 import type { ExpenseFilter, ExpenseSummary } from '../services/expenseService';
 import type { Expense } from '../types/api';
 import AddExpense from './AddExpense';
 import { CURRENCY_SYMBOLS } from '../constants/currencies';
-import { DATETIME_WITH_TIMEZONE_FORMAT } from '../constants/expense';
 import { COLORS, BOX_SHADOWS } from '../constants/colors';
 import FilterSection from '../common/FilterSection';
+import { formatDateForDisplay, formatDateToYYYYMMDD } from '../common/utils/dateUtils';
 
 const Dashboard: React.FC = () => {
   const [expenses, setExpenses] = useState<Expense[]>([]);
@@ -41,6 +42,7 @@ const Dashboard: React.FC = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [availableTypes, setAvailableTypes] = useState<string[]>([]);
   const [availableCurrencies, setAvailableCurrencies] = useState<string[]>(['VND', 'USD']);
+  const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
 
   // Filter states
   const [filters, setFilters] = useState<ExpenseFilter>({
@@ -87,8 +89,15 @@ const Dashboard: React.FC = () => {
     // eslint-disable-next-line
   }, []);
 
-  const handleOpen = () => setOpen(true);
-  const handleClose = () => setOpen(false);
+  const handleOpen = () => {
+    setEditingExpense(null);
+    setOpen(true);
+  };
+
+  const handleClose = () => {
+    setOpen(false);
+    setEditingExpense(null);
+  };
 
   const handleFilterChange = (field: keyof ExpenseFilter | 'from_date' | 'to_date', value: any) => {
     if (field === 'from_date') {
@@ -112,18 +121,12 @@ const Dashboard: React.FC = () => {
     if (filters.original_currency) cleanFilters.original_currency = filters.original_currency;
     if (filters.group_by) cleanFilters.group_by = filters.group_by;
     if (fromDate) {
-      // Set to start of day (00:00:00) in local timezone
-      const startOfDay = new Date(fromDate);
-      startOfDay.setHours(0, 0, 0, 0);
-      // Format with timezone: 2025-11-27T00:00:00+07:00
-      cleanFilters.from = format(startOfDay, DATETIME_WITH_TIMEZONE_FORMAT);
+      // Format as YYYY-MM-DD
+      cleanFilters.from = formatDateToYYYYMMDD(fromDate);
     }
     if (toDate) {
-      // Set to end of day (23:59:59) in local timezone
-      const endOfDay = new Date(toDate);
-      endOfDay.setHours(23, 59, 59, 999);
-      // Format with timezone: 2025-11-27T23:59:59+07:00
-      cleanFilters.to = format(endOfDay, DATETIME_WITH_TIMEZONE_FORMAT);
+      // Format as YYYY-MM-DD
+      cleanFilters.to = formatDateToYYYYMMDD(toDate);
     }
     
     console.log('Applying filters:', cleanFilters);
@@ -145,6 +148,23 @@ const Dashboard: React.FC = () => {
     fetchExpenses({});
   };
 
+  const handleDeleteExpense = async (id: number) => {
+    if (!window.confirm('Are you sure you want to delete this expense?')) {
+      return;
+    }
+    try {
+      await expenseService.deleteExpense(id);
+      fetchExpenses(filters); // Refresh the list
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Failed to delete expense');
+    }
+  };
+
+  const handleEditExpense = (expense: Expense) => {
+    setEditingExpense(expense);
+    setOpen(true);
+  };
+
   const hasActiveFilters = !!(filters.kind || filters.type || (filters.currencies && filters.currencies.length > 0) || fromDate || toDate);
 
   const formatCurrency = (amount: number, currency: string) => {
@@ -159,11 +179,7 @@ const Dashboard: React.FC = () => {
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    });
+    return formatDateForDisplay(dateString);
   };
 
   if (loading) {
@@ -210,6 +226,7 @@ const Dashboard: React.FC = () => {
       >
         <DialogContent sx={{ p: 0 }}>
           <AddExpense 
+            expense={editingExpense}
             onExpenseAdded={() => { 
               handleClose(); 
               fetchExpenses(); 
@@ -299,6 +316,7 @@ const Dashboard: React.FC = () => {
                   <TableCell sx={{ fontWeight: 600 }}>Kind</TableCell>
                   <TableCell align="right" sx={{ fontWeight: 600 }}>Amount</TableCell>
                   <TableCell sx={{ fontWeight: 600 }}>Currency</TableCell>
+                  <TableCell align="center" sx={{ fontWeight: 600 }}>Actions</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -346,6 +364,28 @@ const Dashboard: React.FC = () => {
                         <Typography variant="body2">
                           {expense.currency}
                         </Typography>
+                      </TableCell>
+                      <TableCell align="center">
+                        <Box display="flex" gap={0.5} justifyContent="center">
+                          <Tooltip title="Edit">
+                            <IconButton 
+                              size="small" 
+                              onClick={() => handleEditExpense(expense)}
+                              sx={{ color: 'primary.main' }}
+                            >
+                              <Edit fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="Delete">
+                            <IconButton 
+                              size="small" 
+                              onClick={() => handleDeleteExpense(expense.id)}
+                              sx={{ color: 'error.main' }}
+                            >
+                              <Delete fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        </Box>
                       </TableCell>
                     </TableRow>
                   </Fade>

@@ -56,6 +56,21 @@ export const expenseService = {
     return response.data;
   },
 
+  async updateExpense(id: number, expenseData: Partial<ExpenseRequest>): Promise<Expense> {
+    const token = getAuthToken();
+    const response = await apiClient.put<Expense>(`/expenses/${id}`, expenseData, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    return response.data;
+  },
+
+  async deleteExpense(id: number): Promise<void> {
+    const token = getAuthToken();
+    await apiClient.delete(`/expenses/${id}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+  },
+
   async getExpenses(filters?: ExpenseFilter): Promise<Expense[]> {
     const token = getAuthToken();
     const response = await apiClient.get<Expense[]>('/expenses/', {
