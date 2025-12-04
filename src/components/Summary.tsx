@@ -11,6 +11,12 @@ import {
   Collapse,
   Button,
   Avatar,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
 } from '@mui/material';
 import { format } from 'date-fns';
 import { 
@@ -19,6 +25,7 @@ import {
   TrendingDown, 
   AccountBalance,
 } from '@mui/icons-material';
+import { PieChart } from '@mui/x-charts/PieChart';
 import { expenseService } from '../services/expenseService';
 import type { ExpenseFilter, ExpenseSummary as ExpenseSummaryType } from '../services/expenseService';
 import { CURRENCY_SYMBOLS } from '../constants/currencies';
@@ -106,6 +113,7 @@ const Summary: React.FC = () => {
       cleanFilters.to = format(endOfDay, DATETIME_WITH_TIMEZONE_FORMAT);
     }
     fetchSummary(cleanFilters);
+    setShowFilters(false);
   };
 
   const handleClearFilters = () => {
@@ -141,6 +149,25 @@ const Summary: React.FC = () => {
     }
     
     if (summary.by_currency) {
+      // Create a complete map with all available currencies
+      const allCurrencies = availableCurrencies.reduce((acc, currency) => {
+        acc[currency] = {
+          income: 0,
+          expense: 0,
+          balance: 0,
+        };
+        return acc;
+      }, {} as Record<string, { income: number; expense: number; balance: number }>);
+
+      // Merge with actual data from summary
+      Object.entries(summary.by_currency).forEach(([currency, data]) => {
+        allCurrencies[currency] = {
+          income: data.total_income,
+          expense: data.total_expense,
+          balance: data.balance,
+        };
+      });
+
       return {
         mode: 'breakdown' as const,
         converted: {
@@ -149,14 +176,7 @@ const Summary: React.FC = () => {
           expense: summary.total_expense,
           balance: summary.balance,
         },
-        byCurrency: Object.entries(summary.by_currency).reduce((acc, [currency, data]) => {
-          acc[currency] = {
-            income: data.total_income,
-            expense: data.total_expense,
-            balance: data.balance,
-          };
-          return acc;
-        }, {} as Record<string, { income: number; expense: number; balance: number }>),
+        byCurrency: allCurrencies,
       };
     }
     
@@ -176,48 +196,36 @@ const Summary: React.FC = () => {
 
   if (loading) {
     return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="80vh">
+      <Box display="flex" justifyContent="center" alignItems="center" minHeight="80vh" bgcolor={COLORS.background.main}>
         <CircularProgress />
       </Box>
     );
   }
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', bgcolor: COLORS.background.main }}>
       <Container maxWidth={false} disableGutters sx={{ mt: 4, mb: 4, flexGrow: 1, px: { xs: 2, sm: 3, md: 4 } }}>
         {/* Exchange Rates Info */}
         {totals.mode === 'breakdown' && Object.keys(exchangeRates).length > 0 && (
-          <Box mb={3}>
-            <Paper sx={{ 
-              p: 3, 
-              background: COLORS.gradients.primary,
-              borderRadius: 3,
-              boxShadow: BOX_SHADOWS.card,
-            }}>
-              <Typography variant="body1" fontWeight={600} gutterBottom sx={{ color: COLORS.text.secondary }}>
-                Exchange Rates to {baseCurrency}:
-              </Typography>
-              <Box display="flex" gap={3} flexWrap="wrap" mt={1}>
-                {Object.entries(exchangeRates)
-                  .filter(([curr]) => curr !== baseCurrency)
-                  .map(([currency, rate]) => (
-                    <Box 
-                      key={currency} 
-                      sx={{ 
-                        bgcolor: COLORS.background.paper,
-                        px: 2,
-                        py: 1,
-                        borderRadius: 2,
-                        boxShadow: BOX_SHADOWS.small,
-                      }}
-                    >
-                      <Typography variant="body2" sx={{ color: COLORS.text.tertiary, fontWeight: 500 }}>
-                        1 {currency} = {rate.toLocaleString()} {CURRENCY_SYMBOLS[baseCurrency] || baseCurrency}
-                      </Typography>
-                    </Box>
-                  ))}
-              </Box>
-            </Paper>
+          <Box mb={2}>
+            <Typography variant="caption" sx={{ color: COLORS.text.tertiary, mr: 2 }}>
+              Exchange Rates to {baseCurrency}:
+            </Typography>
+            {Object.entries(exchangeRates)
+              .filter(([curr]) => curr !== baseCurrency)
+              .map(([currency, rate], index) => (
+                <Typography 
+                  key={currency} 
+                  component="span"
+                  variant="caption" 
+                  sx={{ 
+                    color: COLORS.text.secondary, 
+                    mr: 2,
+                  }}
+                >
+                  {index > 0 && '• '}1 {currency} = {rate.toLocaleString()} {CURRENCY_SYMBOLS[baseCurrency] || baseCurrency}
+                </Typography>
+              ))}
           </Box>
         )}
 
@@ -317,7 +325,7 @@ const Summary: React.FC = () => {
                         Balance
                       </Typography>
                       <Typography variant="h4" fontWeight="bold" sx={{ fontSize: { xs: '1.5rem', md: '2.125rem' } }}>
-                        {formatCurrency(Math.abs(totals.single.balance), totals.single.currency)}
+                        {totals.single.balance < 0 ? '-' : ''}{formatCurrency(Math.abs(totals.single.balance), totals.single.currency)}
                       </Typography>
                     </Box>
                     <Avatar sx={{ bgcolor: 'rgba(255,255,255,0.3)' }}>
@@ -460,7 +468,7 @@ const Summary: React.FC = () => {
                         Balance
                       </Typography>
                       <Typography variant="h4" fontWeight="bold" sx={{ color: COLORS.text.primary }}>
-                        {formatCurrency(Math.abs(totals.converted.balance), totals.converted.currency)}
+                        {totals.converted.balance < 0 ? '-' : ''}{formatCurrency(Math.abs(totals.converted.balance), totals.converted.currency)}
                       </Typography>
                     </Box>
                     <Avatar sx={{ bgcolor: 'rgba(26, 32, 44, 0.1)', width: 48, height: 48, color: COLORS.text.primary }}>
@@ -481,7 +489,7 @@ const Summary: React.FC = () => {
                           {currency}
                         </Typography>
                         <Typography variant="body2" fontWeight={500} sx={{ color: COLORS.text.primary }}>
-                          {formatCurrency(Math.abs(data.balance), currency)} {data.balance >= 0 ? '↑' : '↓'}
+                          {data.balance < 0 ? '-' : ''}{formatCurrency(Math.abs(data.balance), currency)} {data.balance >= 0 ? '↑' : '↓'}
                         </Typography>
                       </Box>
                     ))}
@@ -530,82 +538,215 @@ const Summary: React.FC = () => {
           />
         </Collapse>
 
-        {/* Grouped Summary */}
+        {/* Summary by Type - Pie Charts */}
+        {summary && summary.expenses && summary.expenses.length > 0 && (
+          <Box mb={4}>
+            <Typography variant="h5" fontWeight="bold" mb={3} sx={{ color: COLORS.text.primary }}>
+              Summary by Type
+            </Typography>
+            <Box display="flex" flexDirection={{ xs: 'column', lg: 'row' }} gap={3}>
+              {/* Income Pie Chart */}
+              {(() => {
+                const incomeByType = summary.expenses
+                  .filter(exp => exp.kind === 'income')
+                  .reduce((acc, exp) => {
+                    const rate = exchangeRates[exp.currency] || 1;
+                    const targetRate = exchangeRates[summary.currency] || 1;
+                    const convertedAmount = exp.amount * rate / targetRate;
+                    acc[exp.type] = (acc[exp.type] || 0) + convertedAmount;
+                    return acc;
+                  }, {} as Record<string, number>);
+                
+                return Object.keys(incomeByType).length > 0 ? (
+                  <Paper sx={{ flex: 1, p: 3, borderRadius: 3, boxShadow: BOX_SHADOWS.card }}>
+                    <Typography variant="h6" fontWeight="bold" mb={2} sx={{ color: COLORS.income.main }}>
+                      Income by Type
+                    </Typography>
+                    <Box display="flex" flexDirection={{ xs: 'column', md: 'row' }} gap={2} alignItems="center">
+                      <Box flex="1" display="flex" justifyContent="center" width="100%" minHeight={250}>
+                        <PieChart
+                          series={[
+                            {
+                              data: Object.entries(incomeByType)
+                                .sort(([, a], [, b]) => b - a)
+                                .map(([type, amount], index) => ({
+                                  id: index,
+                                  value: amount,
+                                  label: type,
+                                })),
+                            },
+                          ]}
+                          height={250}
+                        />
+                      </Box>
+                      <Box flex="1">
+                        <TableContainer>
+                          <Table size="small">
+                            <TableHead>
+                              <TableRow>
+                                <TableCell sx={{ fontWeight: 'bold', color: COLORS.text.primary }}>Type</TableCell>
+                                <TableCell align="right" sx={{ fontWeight: 'bold', color: COLORS.text.primary }}>Amount</TableCell>
+                              </TableRow>
+                            </TableHead>
+                            <TableBody>
+                              {Object.entries(incomeByType)
+                                .sort(([, a], [, b]) => b - a)
+                                .map(([type, amount]) => (
+                                  <TableRow key={type} sx={{ '&:hover': { bgcolor: COLORS.background.hover } }}>
+                                    <TableCell sx={{ color: COLORS.text.secondary, fontWeight: 500 }}>
+                                      {type}
+                                    </TableCell>
+                                    <TableCell align="right" sx={{ color: COLORS.income.main, fontWeight: 600 }}>
+                                      {formatCurrency(amount, summary.currency)}
+                                    </TableCell>
+                                  </TableRow>
+                                ))}
+                            </TableBody>
+                          </Table>
+                        </TableContainer>
+                      </Box>
+                    </Box>
+                  </Paper>
+                ) : null;
+              })()}
+
+              {/* Expense Pie Chart */}
+              {(() => {
+                const expenseByType = summary.expenses
+                  .filter(exp => exp.kind === 'expense')
+                  .reduce((acc, exp) => {
+                    const rate = exchangeRates[exp.currency] || 1;
+                    const targetRate = exchangeRates[summary.currency] || 1;
+                    const convertedAmount = exp.amount * rate / targetRate;
+                    acc[exp.type] = (acc[exp.type] || 0) + convertedAmount;
+                    return acc;
+                  }, {} as Record<string, number>);
+                
+                return Object.keys(expenseByType).length > 0 ? (
+                  <Paper sx={{ flex: 1, p: 3, borderRadius: 3, boxShadow: BOX_SHADOWS.card }}>
+                    <Typography variant="h6" fontWeight="bold" mb={2} sx={{ color: COLORS.expense.main }}>
+                      Expense by Type
+                    </Typography>
+                    <Box display="flex" flexDirection={{ xs: 'column', md: 'row' }} gap={2} alignItems="center">
+                      <Box flex="1" display="flex" justifyContent="center" width="100%" minHeight={250}>
+                        <PieChart
+                          series={[
+                            {
+                              data: Object.entries(expenseByType)
+                                .sort(([, a], [, b]) => b - a)
+                                .map(([type, amount], index) => ({
+                                  id: index,
+                                  value: amount,
+                                  label: type,
+                                })),
+                            },
+                          ]}
+                          height={250}
+                        />
+                      </Box>
+                      <Box flex="1">
+                        <TableContainer>
+                          <Table size="small">
+                            <TableHead>
+                              <TableRow>
+                                <TableCell sx={{ fontWeight: 'bold', color: COLORS.text.primary }}>Type</TableCell>
+                                <TableCell align="right" sx={{ fontWeight: 'bold', color: COLORS.text.primary }}>Amount</TableCell>
+                              </TableRow>
+                            </TableHead>
+                            <TableBody>
+                              {Object.entries(expenseByType)
+                                .sort(([, a], [, b]) => b - a)
+                                .map(([type, amount]) => (
+                                  <TableRow key={type} sx={{ '&:hover': { bgcolor: COLORS.background.hover } }}>
+                                    <TableCell sx={{ color: COLORS.text.secondary, fontWeight: 500 }}>
+                                      {type}
+                                    </TableCell>
+                                    <TableCell align="right" sx={{ color: COLORS.expense.main, fontWeight: 600 }}>
+                                      {formatCurrency(amount, summary.currency)}
+                                    </TableCell>
+                                  </TableRow>
+                                ))}
+                            </TableBody>
+                          </Table>
+                        </TableContainer>
+                      </Box>
+                    </Box>
+                  </Paper>
+                ) : null;
+              })()}
+            </Box>
+          </Box>
+        )}
+
+        {/* Grouped Summary - Table Format */}
         {summary?.groups && summary.groups.length > 0 && (
           <Box mt={4}>
             <Typography variant="h5" fontWeight="bold" mb={3} sx={{ color: COLORS.text.primary }}>
-              Grouped Summary ({filters.group_by})
+              Grouped Summary by {filters.group_by}
             </Typography>
-            <Box display="flex" flexDirection="column" gap={2}>
-              {summary.groups.map((group) => (
-                <Paper
-                  key={group.key}
-                  sx={{
-                    p: 3,
-                    borderRadius: 3,
-                    boxShadow: BOX_SHADOWS.card,
-                    background: COLORS.gradients.primary,
-                    transition: 'transform 0.2s ease, box-shadow 0.2s ease',
-                    '&:hover': {
-                      transform: 'translateY(-2px)',
-                      boxShadow: BOX_SHADOWS.cardHover,
-                    },
-                  }}
-                >
-                  <Typography variant="h6" fontWeight="bold" mb={2} sx={{ color: COLORS.text.primary }}>
-                    {group.label}
-                  </Typography>
-                  <Box display="flex" flexWrap="wrap" gap={3}>
-                    <Box flex="1 1 200px">
-                      <Typography variant="body2" sx={{ color: COLORS.text.tertiary, mb: 0.5 }}>
-                        Income
-                      </Typography>
-                      <Typography variant="h6" fontWeight="bold" sx={{ color: COLORS.income.main }}>
+            <TableContainer 
+              component={Paper} 
+              sx={{ 
+                borderRadius: 3, 
+                boxShadow: BOX_SHADOWS.card,
+                overflow: 'hidden',
+              }}
+            >
+              <Table>
+                <TableHead>
+                  <TableRow sx={{ bgcolor: COLORS.gradients.primary }}>
+                    <TableCell sx={{ fontWeight: 'bold', color: COLORS.text.primary }}>Period</TableCell>
+                    <TableCell align="right" sx={{ fontWeight: 'bold', color: COLORS.text.primary }}>Income</TableCell>
+                    <TableCell align="right" sx={{ fontWeight: 'bold', color: COLORS.text.primary }}>Expense</TableCell>
+                    <TableCell align="right" sx={{ fontWeight: 'bold', color: COLORS.text.primary }}>Balance</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', color: COLORS.text.primary }}>Types</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {summary.groups.map((group) => (
+                    <TableRow 
+                      key={group.key}
+                      sx={{ 
+                        '&:hover': { bgcolor: COLORS.background.hover },
+                        transition: 'background-color 0.2s ease',
+                      }}
+                    >
+                      <TableCell sx={{ color: COLORS.text.primary, fontWeight: 600 }}>
+                        {group.label}
+                      </TableCell>
+                      <TableCell align="right" sx={{ color: COLORS.income.main, fontWeight: 600 }}>
                         {formatCurrency(group.income, summary.currency)}
-                      </Typography>
-                    </Box>
-                    <Box flex="1 1 200px">
-                      <Typography variant="body2" sx={{ color: COLORS.text.tertiary, mb: 0.5 }}>
-                        Expense
-                      </Typography>
-                      <Typography variant="h6" fontWeight="bold" sx={{ color: COLORS.expense.main }}>
+                      </TableCell>
+                      <TableCell align="right" sx={{ color: COLORS.expense.main, fontWeight: 600 }}>
                         {formatCurrency(group.expense, summary.currency)}
-                      </Typography>
-                    </Box>
-                    <Box flex="1 1 200px">
-                      <Typography variant="body2" sx={{ color: COLORS.text.tertiary, mb: 0.5 }}>
-                        Balance
-                      </Typography>
-                      <Typography 
-                        variant="h6" 
-                        fontWeight="bold" 
+                      </TableCell>
+                      <TableCell 
+                        align="right" 
                         sx={{ 
-                          color: group.balance >= 0 ? COLORS.income.main : COLORS.expense.main 
+                          color: group.balance >= 0 ? COLORS.income.main : COLORS.expense.main,
+                          fontWeight: 600,
                         }}
                       >
-                        {formatCurrency(Math.abs(group.balance), summary.currency)} {group.balance >= 0 ? '↑' : '↓'}
-                      </Typography>
-                    </Box>
-                  </Box>
-                  {Object.keys(group.total_by_type).length > 0 && (
-                    <Box mt={2} pt={2} sx={{ borderTop: `1px solid ${COLORS.background.border}` }}>
-                      <Typography variant="body2" sx={{ color: COLORS.text.tertiary, mb: 1, fontWeight: 500 }}>
-                        By Type:
-                      </Typography>
-                      <Box display="flex" flexWrap="wrap" gap={2}>
-                        {Object.entries(group.total_by_type).map(([type, amount]) => (
-                          <Box key={type} sx={{ flex: '0 1 auto' }}>
-                            <Typography variant="body2" sx={{ color: COLORS.text.secondary }}>
-                              {type}: {formatCurrency(amount, summary.currency)}
-                            </Typography>
-                          </Box>
-                        ))}
-                      </Box>
-                    </Box>
-                  )}
-                </Paper>
-              ))}
-            </Box>
+                        {group.balance < 0 ? '-' : ''}{formatCurrency(Math.abs(group.balance), summary.currency)} {group.balance >= 0 ? '↑' : '↓'}
+                      </TableCell>
+                      <TableCell sx={{ color: COLORS.text.secondary, fontSize: '0.875rem' }}>
+                        {Object.keys(group.total_by_type).length > 0 ? (
+                          Object.entries(group.total_by_type)
+                            .sort(([, a], [, b]) => (b as number) - (a as number))
+                            .map(([type, amount]) => (
+                              <Box key={type} component="span" sx={{ display: 'block', mb: 0.5 }}>
+                                {type}: {formatCurrency(amount, summary.currency)}
+                              </Box>
+                            ))
+                        ) : (
+                          <Box component="span" sx={{ color: COLORS.text.tertiary }}>-</Box>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
           </Box>
         )}
       </Container>

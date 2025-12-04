@@ -9,12 +9,17 @@ import {
   Box,
   Alert,
   CircularProgress,
+  InputAdornment,
+  IconButton,
 } from '@mui/material';
+import { Visibility, VisibilityOff, AccountCircle, Lock } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
+import { COLORS, BOX_SHADOWS } from '../constants/colors';
 
 const Login: React.FC = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const { state, login, clearError } = useAuth();
   const navigate = useNavigate();
 
@@ -38,76 +43,197 @@ useEffect(() => {
   };
 
   return (
-    <Container maxWidth="sm">
-      <Box
-        sx={{
-          marginTop: 8,
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
+    <Box
+      sx={{
+        minHeight: '100vh',
+        width: '100vw',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: COLORS.gradients.primary,
+        py: 4,
+        px: 2,
+      }}
+    >
+      <Paper 
+        elevation={0} 
+        sx={{ 
+          padding: { xs: 3, sm: 5 }, 
+          width: '100%',
+          maxWidth: '500px',
+          borderRadius: 4,
+          boxShadow: BOX_SHADOWS.card,
+          background: COLORS.background.paper,
         }}
       >
-        <Paper elevation={3} sx={{ padding: 4, width: '100%' }}>
-          <Typography component="h1" variant="h4" align="center" gutterBottom>
-            Mindoh
-          </Typography>
-          <Typography component="h2" variant="h6" align="center" gutterBottom>
-            Sign In
-          </Typography>
-          
-          {state.error && (
-            <Alert severity="error" sx={{ mb: 2 }}>
-              {state.error}
-            </Alert>
-          )}
-          
-          <Box component="form" onSubmit={handleSubmit} sx={{ mt: 1 }}>
-            <TextField
-              margin="normal"
-              required
-              fullWidth
-              id="username"
-              label="Username"
-              name="username"
-              autoComplete="username"
-              autoFocus
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              disabled={state.loading}
-            />
-            <TextField
-              margin="normal"
-              required
-              fullWidth
-              name="password"
-              label="Password"
-              type="password"
-              id="password"
-              autoComplete="current-password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              disabled={state.loading}
-            />
-            <Button
-              type="submit"
-              fullWidth
-              variant="contained"
-              sx={{ mt: 3, mb: 2 }}
-              disabled={state.loading}
-            >
-              {state.loading ? <CircularProgress size={24} /> : 'Sign In'}
-            </Button>
-            <Box textAlign="center">
-              <Link to="/register" style={{ textDecoration: 'none' }}>
-                <Typography variant="body2" color="primary">
-                  Don't have an account? Sign Up
-                </Typography>
-              </Link>
+        {/* Logo/Brand Section */}
+        <Box sx={{ textAlign: 'center', mb: 4 }}>
+              <Typography 
+                component="h1" 
+                variant="h3" 
+                sx={{ 
+                  fontWeight: 800,
+                  background: COLORS.gradients.income,
+                  backgroundClip: 'text',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                  mb: 1,
+                }}
+              >
+                Mindoh
+              </Typography>
+              <Typography 
+                variant="body1" 
+                sx={{ 
+                  color: COLORS.text.tertiary,
+                  fontWeight: 500,
+                }}
+              >
+                Your personal expense tracker
+              </Typography>
             </Box>
-          </Box>
-        </Paper>
-      </Box>
-    </Container>
+
+            <Typography 
+              component="h2" 
+              variant="h5" 
+              align="center" 
+              sx={{ 
+                mb: 3,
+                fontWeight: 700,
+                color: COLORS.text.primary,
+              }}
+            >
+              Welcome Back
+            </Typography>
+            
+            {state.error && (
+              <Alert 
+                severity="error" 
+                sx={{ 
+                  mb: 3,
+                  borderRadius: 2,
+                }}
+              >
+                {state.error}
+              </Alert>
+            )}
+            
+            <Box component="form" onSubmit={handleSubmit}>
+              <TextField
+                margin="normal"
+                required
+                fullWidth
+                id="username"
+                label="Username"
+                name="username"
+                autoComplete="username"
+                autoFocus
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                disabled={state.loading}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <AccountCircle sx={{ color: COLORS.text.tertiary }} />
+                    </InputAdornment>
+                  ),
+                }}
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: 2,
+                    '&:hover fieldset': {
+                      borderColor: COLORS.income.main,
+                    },
+                    '&.Mui-focused fieldset': {
+                      borderColor: COLORS.income.main,
+                    },
+                  },
+                }}
+              />
+              <TextField
+                margin="normal"
+                required
+                fullWidth
+                name="password"
+                label="Password"
+                type={showPassword ? 'text' : 'password'}
+                id="password"
+                autoComplete="current-password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                disabled={state.loading}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <Lock sx={{ color: COLORS.text.tertiary }} />
+                    </InputAdornment>
+                  ),
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton
+                        onClick={() => setShowPassword(!showPassword)}
+                        edge="end"
+                      >
+                        {showPassword ? <VisibilityOff /> : <Visibility />}
+                      </IconButton>
+                    </InputAdornment>
+                  ),
+                }}
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: 2,
+                    '&:hover fieldset': {
+                      borderColor: COLORS.income.main,
+                    },
+                    '&.Mui-focused fieldset': {
+                      borderColor: COLORS.income.main,
+                    },
+                  },
+                }}
+              />
+              <Button
+                type="submit"
+                fullWidth
+                variant="contained"
+                sx={{ 
+                  mt: 4, 
+                  mb: 2,
+                  py: 1.5,
+                  borderRadius: 2,
+                  fontWeight: 600,
+                  fontSize: '1rem',
+                  textTransform: 'none',
+                  background: COLORS.gradients.income,
+                  boxShadow: BOX_SHADOWS.income,
+                  '&:hover': {
+                    background: COLORS.gradients.income,
+                    boxShadow: BOX_SHADOWS.incomeHover,
+                    transform: 'translateY(-2px)',
+                  },
+                  transition: 'all 0.3s ease',
+                }}
+                disabled={state.loading}
+              >
+                {state.loading ? <CircularProgress size={24} color="inherit" /> : 'Sign In'}
+              </Button>
+              <Box textAlign="center" mt={2}>
+                <Typography variant="body2" sx={{ color: COLORS.text.tertiary }}>
+                  Don't have an account?{' '}
+                  <Link 
+                    to="/register" 
+                    style={{ 
+                      textDecoration: 'none',
+                      color: COLORS.income.main,
+                      fontWeight: 600,
+                    }}
+                  >
+                    Sign Up
+                  </Link>
+                </Typography>
+              </Box>
+            </Box>
+          </Paper>
+    </Box>
   );
 };
 
