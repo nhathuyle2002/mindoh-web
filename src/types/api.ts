@@ -25,6 +25,8 @@ export interface LoginResponse {
 
 export type ExpenseKind = 'expense' | 'income';
 
+export type ExpenseResource = 'CASH' | 'CAKE' | 'VCB' | 'VPBANK' | 'BIDV' | 'OTHER';
+
 export interface Expense {
   id: number;
   user_id: number;
@@ -32,6 +34,7 @@ export interface Expense {
   currency: string;
   kind: ExpenseKind;
   type: string;
+  resource?: ExpenseResource;
   description: string;
   date: string;
   created_at: string;
@@ -44,6 +47,7 @@ export interface ExpenseRequest {
   currency: string;
   kind: ExpenseKind;
   type: string;
+  resource?: ExpenseResource;
   description: string;
   date: string;
 }

@@ -552,7 +552,7 @@ const Summary: React.FC = () => {
                   .reduce((acc, exp) => {
                     const rate = exchangeRates[exp.currency] || 1;
                     const targetRate = exchangeRates[summary.currency] || 1;
-                    const convertedAmount = exp.amount * rate / targetRate;
+                    const convertedAmount = Math.abs(exp.amount) * rate / targetRate;
                     acc[exp.type] = (acc[exp.type] || 0) + convertedAmount;
                     return acc;
                   }, {} as Record<string, number>);
@@ -617,7 +617,7 @@ const Summary: React.FC = () => {
                   .reduce((acc, exp) => {
                     const rate = exchangeRates[exp.currency] || 1;
                     const targetRate = exchangeRates[summary.currency] || 1;
-                    const convertedAmount = exp.amount * rate / targetRate;
+                    const convertedAmount = Math.abs(exp.amount) * rate / targetRate;
                     acc[exp.type] = (acc[exp.type] || 0) + convertedAmount;
                     return acc;
                   }, {} as Record<string, number>);

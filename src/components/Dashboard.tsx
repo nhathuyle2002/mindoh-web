@@ -313,6 +313,7 @@ const Dashboard: React.FC = () => {
                   <TableCell sx={{ fontWeight: 600 }}>Date</TableCell>
                   <TableCell sx={{ fontWeight: 600 }}>Description</TableCell>
                   <TableCell sx={{ fontWeight: 600 }}>Type</TableCell>
+                  <TableCell sx={{ fontWeight: 600 }}>Resource</TableCell>
                   <TableCell sx={{ fontWeight: 600 }}>Kind</TableCell>
                   <TableCell align="right" sx={{ fontWeight: 600 }}>Amount</TableCell>
                   <TableCell sx={{ fontWeight: 600 }}>Currency</TableCell>
@@ -344,6 +345,11 @@ const Dashboard: React.FC = () => {
                         </Typography>
                       </TableCell>
                       <TableCell>
+                        <Typography variant="body2" color="text.secondary">
+                          {expense.resource || '-'}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
                         <Chip
                           label={expense.kind}
                           size="small"
@@ -357,7 +363,7 @@ const Dashboard: React.FC = () => {
                           color={expense.kind === 'income' ? 'success.main' : 'error.main'}
                         >
                           {expense.kind === 'income' ? '+' : '-'}
-                          {formatCurrency(expense.amount, expense.currency)}
+                          {formatCurrency(Math.abs(expense.amount), expense.currency)}
                         </Typography>
                       </TableCell>
                       <TableCell>

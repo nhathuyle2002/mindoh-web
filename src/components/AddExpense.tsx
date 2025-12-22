@@ -18,7 +18,7 @@ import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { expenseService } from '../services/expenseService';
 import type { ExpenseRequest, Expense } from '../types/api';
 import { CURRENCIES } from '../constants/currencies';
-import { EXPENSE_KINDS } from '../constants/expense';
+import { EXPENSE_KINDS, EXPENSE_RESOURCES } from '../constants/expense';
 import { COLORS, BOX_SHADOWS } from '../constants/colors';
 import { getTodayDate, formatDateToYYYYMMDD, parseDateFromYYYYMMDD } from '../common/utils/dateUtils';
 
@@ -49,6 +49,7 @@ const AddExpense: React.FC<AddExpenseProps> = ({ expense, onExpenseAdded, onClos
     description: expense?.description || '',
     kind: expense?.kind || 'expense',
     type: expense?.type || '',
+    resource: expense?.resource || undefined,
     currency: expense?.currency || 'VND',
     date: expense?.date || getTodayDate(),
   });
@@ -62,10 +63,11 @@ const AddExpense: React.FC<AddExpenseProps> = ({ expense, onExpenseAdded, onClos
     if (expense) {
       setFormData({
         user_id: expense.user_id,
-        amount: expense.amount,
+        amount: Math.abs(expense.amount), // Always show positive in UI
         description: expense.description || '',
         kind: expense.kind,
         type: expense.type,
+        resource: expense.resource || undefined,
         currency: expense.currency,
         date: expense.date,
       });
@@ -76,6 +78,7 @@ const AddExpense: React.FC<AddExpenseProps> = ({ expense, onExpenseAdded, onClos
         description: '',
         kind: 'expense',
         type: '',
+        resource: undefined,
         currency: 'VND',
         date: getTodayDate(),
       });
@@ -102,8 +105,17 @@ const AddExpense: React.FC<AddExpenseProps> = ({ expense, onExpenseAdded, onClos
         ? formData.date 
         : formatDateToYYYYMMDD(new Date(formData.date));
       
+      // Convert amount: negative for expense, positive for income
+      let amount = formData.amount;
+      if (formData.kind === 'expense' && amount > 0) {
+        amount = -amount;
+      } else if (formData.kind === 'income' && amount < 0) {
+        amount = -amount;
+      }
+      
       const expenseData = { 
-        ...formData, 
+        ...formData,
+        amount: amount,
         user_id: getUserId(), 
         type: formData.type.trim(),
         date: dateStr
@@ -124,6 +136,7 @@ const AddExpense: React.FC<AddExpenseProps> = ({ expense, onExpenseAdded, onClos
         description: '',
         kind: 'expense',
         type: '',
+        resource: undefined,
         currency: 'VND',
         date: getTodayDate(),
       });
@@ -260,6 +273,23 @@ const AddExpense: React.FC<AddExpenseProps> = ({ expense, onExpenseAdded, onClos
                 )}
                 disabled={loading}
               />
+              <TextField
+                sx={{ flex: '1 1 150px' }}
+                select
+                label="Resource"
+                value={formData.resource || ''}
+                onChange={(e) => handleChange('resource', e.target.value)}
+                disabled={loading}
+              >
+                <MenuItem value="">
+                  <em>None</em>
+                </MenuItem>
+                {EXPENSE_RESOURCES.map((option) => (
+                  <MenuItem key={option} value={option}>
+                    {option}
+                  </MenuItem>
+                ))}
+              </TextField>
             </Box>
             <TextField
               fullWidth
