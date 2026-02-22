@@ -8,8 +8,6 @@ import {
   CardContent,
   CircularProgress,
   Alert,
-  Popover,
-  Button,
   Avatar,
   Table,
   TableBody,
@@ -17,41 +15,46 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  ToggleButton,
+  ToggleButtonGroup,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
+  Switch,
+  FormControlLabel,
 } from '@mui/material';
-import { format } from 'date-fns';
+import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subMonths } from 'date-fns';
 import { 
-  FilterList, 
   TrendingUp, 
   TrendingDown, 
   AccountBalance,
 } from '@mui/icons-material';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { expenseService } from '../services/expenseService';
 import type { SummaryFilter, ExpenseSummary as ExpenseSummaryType } from '../services/expenseService';
 import { PieChart } from '@mui/x-charts/PieChart';
 import { CURRENCY_SYMBOLS } from '../constants/currencies';
 import { COLORS, BOX_SHADOWS } from '../constants/colors';
-import FilterSection from '../common/FilterSection';
+
+type DatePreset = 'this_week' | 'this_month' | 'last_month' | 'custom';
 
 const Summary: React.FC = () => {
   const [summary, setSummary] = useState<ExpenseSummaryType | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [filterAnchorEl, setFilterAnchorEl] = useState<HTMLElement | null>(null);
   const [availableCurrencies, setAvailableCurrencies] = useState<string[]>(['VND', 'USD']);
   const [exchangeRates, setExchangeRates] = useState<Record<string, number>>({});
   const [baseCurrency, setBaseCurrency] = useState<string>('VND');
 
   // Filter states
-  const [filters, setFilters] = useState<SummaryFilter>({
-    original_currency: 'VND',
-    from: undefined,
-    to: undefined,
-    group_by: undefined,
-  });
-
-  // Date filter states
-  const [fromDate, setFromDate] = useState<Date | null>(null);
-  const [toDate, setToDate] = useState<Date | null>(null);
+  const [originalCurrency, setOriginalCurrency] = useState<string>('VND');
+  const [datePreset, setDatePreset] = useState<DatePreset>('this_month');
+  const [showByCurrency, setShowByCurrency] = useState(true);
+  const [fromDate, setFromDate] = useState<Date | null>(startOfMonth(new Date()));
+  const [toDate, setToDate] = useState<Date | null>(endOfMonth(new Date()));
 
   const fetchSummary = async (filterParams?: SummaryFilter) => {
     setLoading(true);
@@ -66,48 +69,63 @@ const Summary: React.FC = () => {
     setLoading(false);
   };
 
+  const buildAndFetch = (params: { from?: Date | null; to?: Date | null; currency?: string }) => {
+    const cleanFilters: SummaryFilter = {};
+    if (params.currency) cleanFilters.original_currency = params.currency;
+    if (params.from) cleanFilters.from = format(params.from, 'yyyy-MM-dd');
+    if (params.to) cleanFilters.to = format(params.to, 'yyyy-MM-dd');
+    fetchSummary(cleanFilters);
+  };
+
+  const getPresetDates = (preset: DatePreset): { from: Date; to: Date } | null => {
+    const now = new Date();
+    switch (preset) {
+      case 'this_week':
+        return { from: startOfWeek(now, { weekStartsOn: 1 }), to: endOfWeek(now, { weekStartsOn: 1 }) };
+      case 'this_month':
+        return { from: startOfMonth(now), to: endOfMonth(now) };
+      case 'last_month':
+        return { from: startOfMonth(subMonths(now, 1)), to: endOfMonth(subMonths(now, 1)) };
+      default:
+        return null;
+    }
+  };
+
   useEffect(() => {
-    fetchSummary();
+    const dates = getPresetDates('this_month')!;
+    buildAndFetch({ from: dates.from, to: dates.to, currency: originalCurrency });
     expenseService.getAvailableCurrencies().then(currencies => setAvailableCurrencies(currencies)).catch(() => {});
     expenseService.getExchangeRates().then(({ base_currency, rates }) => { setBaseCurrency(base_currency); setExchangeRates(rates); }).catch(() => {});
     // eslint-disable-next-line
   }, []);
 
-  const handleFilterChange = (field: string, value: any) => {
-    if (field === 'from_date') {
-      setFromDate(value);
-    } else if (field === 'to_date') {
-      setToDate(value);
-    } else {
-      setFilters(prev => ({
-        ...prev,
-        [field]: value || undefined,
-      }));
+  const handlePresetChange = (_: React.MouseEvent<HTMLElement>, preset: DatePreset | null) => {
+    if (!preset) return;
+    setDatePreset(preset);
+    const dates = getPresetDates(preset);
+    if (dates) {
+      setFromDate(dates.from);
+      setToDate(dates.to);
+      buildAndFetch({ from: dates.from, to: dates.to, currency: originalCurrency });
     }
   };
 
-  const handleApplyFilters = () => {
-    const cleanFilters: SummaryFilter = {};
-    if (filters.original_currency) cleanFilters.original_currency = filters.original_currency;
-    if (filters.group_by) cleanFilters.group_by = filters.group_by;
-    if (fromDate) cleanFilters.from = format(fromDate, 'yyyy-MM-dd');
-    if (toDate) cleanFilters.to = format(toDate, 'yyyy-MM-dd');
-    fetchSummary(cleanFilters);
+  const handleCustomFromChange = (date: Date | null) => {
+    setFromDate(date);
+    setDatePreset('custom');
+    buildAndFetch({ from: date, to: toDate, currency: originalCurrency });
   };
 
-  const handleClearFilters = () => {
-    setFilters({
-      original_currency: 'VND',
-      from: undefined,
-      to: undefined,
-      group_by: undefined,
-    });
-    setFromDate(null);
-    setToDate(null);
-    fetchSummary({});
+  const handleCustomToChange = (date: Date | null) => {
+    setToDate(date);
+    setDatePreset('custom');
+    buildAndFetch({ from: fromDate, to: date, currency: originalCurrency });
   };
 
-  const hasActiveFilters = !!(fromDate || toDate || filters.group_by);
+  const handleCurrencyChange = (currency: string) => {
+    setOriginalCurrency(currency);
+    buildAndFetch({ from: fromDate, to: toDate, currency });
+  };
 
   const formatCurrency = (amount: number, currency: string) => {
     const decimals = currency === 'VND' ? 0 : 2;
@@ -171,6 +189,63 @@ const Summary: React.FC = () => {
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', bgcolor: COLORS.background.main }}>
       <Container maxWidth={false} disableGutters sx={{ mt: 4, mb: 4, flexGrow: 1, px: { xs: 2, sm: 3, md: 4 } }}>
+        {/* Filter Bar - Always Visible */}
+        <LocalizationProvider dateAdapter={AdapterDateFns}>
+          <Paper sx={{ p: 2, mb: 3, borderRadius: 3, boxShadow: BOX_SHADOWS.card }}>
+            <Box display="flex" justifyContent="space-between" alignItems="flex-start" flexWrap="wrap" gap={2}>
+              {/* Left: date presets */}
+              <Box display="flex" flexDirection="column" gap={1.5}>
+                <ToggleButtonGroup
+                  value={datePreset}
+                  exclusive
+                  onChange={handlePresetChange}
+                  size="small"
+                  sx={{ flexWrap: 'wrap' }}
+                >
+                  <ToggleButton value="this_week">This Week</ToggleButton>
+                  <ToggleButton value="this_month">This Month</ToggleButton>
+                  <ToggleButton value="last_month">Last Month</ToggleButton>
+                  <ToggleButton value="custom">Custom</ToggleButton>
+                </ToggleButtonGroup>
+                <Box display="flex" gap={1} alignItems="center" flexWrap="wrap">
+                  <DatePicker
+                    label="From"
+                    value={fromDate}
+                    onChange={handleCustomFromChange}
+                    slotProps={{ textField: { size: 'small' } }}
+                  />
+                  <Typography variant="body2" sx={{ color: COLORS.text.tertiary }}>→</Typography>
+                  <DatePicker
+                    label="To"
+                    value={toDate}
+                    onChange={handleCustomToChange}
+                    slotProps={{ textField: { size: 'small' } }}
+                  />
+                </Box>
+              </Box>
+              {/* Right: currency selector + by currency toggle */}
+              <Box display="flex" alignItems="center" gap={2}>
+              <FormControlLabel
+                control={<Switch checked={showByCurrency} onChange={(e) => setShowByCurrency(e.target.checked)} size="small" />}
+                label={<Typography variant="body2" sx={{ color: COLORS.text.secondary }}>By Currency</Typography>}
+              />
+              <FormControl size="small" sx={{ minWidth: 150 }}>
+                <InputLabel>Currency</InputLabel>
+                <Select
+                  value={originalCurrency}
+                  label="Currency"
+                  onChange={(e) => handleCurrencyChange(e.target.value)}
+                >
+                  {availableCurrencies.map((c) => (
+                    <MenuItem key={c} value={c}>{c}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+              </Box>
+            </Box>
+          </Paper>
+        </LocalizationProvider>
+
         {/* Exchange Rates - Top Right */}
         {Object.keys(exchangeRates).length > 0 && (
           <Box display="flex" justifyContent="flex-end" mb={2}>
@@ -240,7 +315,7 @@ const Summary: React.FC = () => {
                 <CardContent>
                   <Box display="flex" justifyContent="space-between" alignItems="flex-start">
                     <Box>
-                      <Typography variant="body2" sx={{ opacity: 0.9, mb: 1 }}>Total Expenses</Typography>
+                      <Typography variant="body2" sx={{ opacity: 0.9, mb: 1 }}>Total Expense</Typography>
                       <Typography variant="h4" fontWeight="bold" sx={{ fontSize: { xs: '1.5rem', md: '2.125rem' } }}>
                         {formatCurrency(totals.single.expense, totals.single.currency)}
                       </Typography>
@@ -266,7 +341,7 @@ const Summary: React.FC = () => {
                 <CardContent>
                   <Box display="flex" justifyContent="space-between" alignItems="flex-start">
                     <Box>
-                      <Typography variant="body2" sx={{ opacity: 0.9, mb: 1 }}>Balance</Typography>
+                      <Typography variant="body2" sx={{ opacity: 0.9, mb: 1 }}>Total Balance</Typography>
                       <Typography variant="h4" fontWeight="bold" sx={{ fontSize: { xs: '1.5rem', md: '2.125rem' } }}>
                         {totals.single.balance < 0 ? '-' : ''}{formatCurrency(Math.abs(totals.single.balance), totals.single.currency)}
                       </Typography>
@@ -306,6 +381,7 @@ const Summary: React.FC = () => {
                     <TrendingUp />
                   </Avatar>
                 </Box>
+                {showByCurrency && (
                 <Box sx={{ mt: 3, pt: 2, borderTop: '2px solid rgba(26, 32, 44, 0.1)' }}>
                   <Typography variant="caption" sx={{ color: COLORS.text.tertiary, mb: 1.5, display: 'block', fontWeight: 500 }}>By Currency:</Typography>
                   {Object.entries(totals.byCurrency).map(([cur, data]) => (
@@ -317,6 +393,7 @@ const Summary: React.FC = () => {
                     </Box>
                   ))}
                 </Box>
+                )}
               </CardContent>
             </Card>
 
@@ -335,7 +412,7 @@ const Summary: React.FC = () => {
               <CardContent>
                 <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={2}>
                   <Box>
-                    <Typography variant="body2" sx={{ color: COLORS.text.secondary, mb: 1, fontWeight: 500 }}>Total Expenses</Typography>
+                    <Typography variant="body2" sx={{ color: COLORS.text.secondary, mb: 1, fontWeight: 500 }}>Total Expense</Typography>
                     <Typography variant="h4" fontWeight="bold" sx={{ color: COLORS.text.primary }}>
                       {formatCurrency(totals.converted.expense, totals.converted.currency)}
                     </Typography>
@@ -344,6 +421,7 @@ const Summary: React.FC = () => {
                     <TrendingDown />
                   </Avatar>
                 </Box>
+                {showByCurrency && (
                 <Box sx={{ mt: 3, pt: 2, borderTop: '1px solid rgba(255,255,255,0.2)' }}>
                   <Typography variant="caption" sx={{ opacity: 0.8, mb: 1.5, display: 'block' }}>By Currency:</Typography>
                   {Object.entries(totals.byCurrency).map(([cur, data]) => (
@@ -353,6 +431,7 @@ const Summary: React.FC = () => {
                     </Box>
                   ))}
                 </Box>
+                )}
               </CardContent>
             </Card>
 
@@ -373,7 +452,7 @@ const Summary: React.FC = () => {
               <CardContent>
                 <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={2}>
                   <Box>
-                    <Typography variant="body2" sx={{ color: COLORS.text.secondary, mb: 1, fontWeight: 500 }}>Balance</Typography>
+                    <Typography variant="body2" sx={{ color: COLORS.text.secondary, mb: 1, fontWeight: 500 }}>Total Balance</Typography>
                     <Typography variant="h4" fontWeight="bold" sx={{ color: COLORS.text.primary }}>
                       {totals.converted.balance < 0 ? '-' : ''}{formatCurrency(Math.abs(totals.converted.balance), totals.converted.currency)}
                     </Typography>
@@ -382,6 +461,7 @@ const Summary: React.FC = () => {
                     <AccountBalance />
                   </Avatar>
                 </Box>
+                {showByCurrency && (
                 <Box sx={{ mt: 3, pt: 2, borderTop: '2px solid rgba(26, 32, 44, 0.1)' }}>
                   <Typography variant="caption" sx={{ color: COLORS.text.tertiary, mb: 1.5, display: 'block', fontWeight: 500 }}>By Currency:</Typography>
                   {Object.entries(totals.byCurrency).map(([cur, data]) => (
@@ -393,73 +473,24 @@ const Summary: React.FC = () => {
                     </Box>
                   ))}
                 </Box>
+                )}
               </CardContent>
             </Card>
           </Box>
         )}
 
-        {/* Filter Section */}
-        <Box display="flex" gap={2} mb={3} flexWrap="wrap">
-          <Button 
-            variant="outlined"
-            startIcon={<FilterList />} 
-            onClick={(e) => setFilterAnchorEl(filterAnchorEl ? null : e.currentTarget)}
-            size="small"
-            sx={{
-              borderRadius: 2,
-              fontWeight: 600,
-              fontSize: '0.875rem',
-              color: COLORS.text.secondary,
-              borderColor: COLORS.background.border,
-              '&:hover': {
-                borderColor: COLORS.text.tertiary,
-                bgcolor: COLORS.background.hover,
-              },
-            }}
-          >
-            Filters {hasActiveFilters && `(${[fromDate, toDate, filters.group_by].filter(Boolean).length})`}
-          </Button>
-        </Box>
-
-        <Popover
-          open={Boolean(filterAnchorEl)}
-          anchorEl={filterAnchorEl}
-          onClose={() => setFilterAnchorEl(null)}
-          anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
-          transformOrigin={{ vertical: 'top', horizontal: 'left' }}
-          PaperProps={{ sx: { mt: 1, width: 720, maxWidth: '95vw', borderRadius: 2, boxShadow: '0 8px 32px rgba(0,0,0,0.15)' } }}
-        >
-          <FilterSection
-            filters={filters}
-            fromDate={fromDate}
-            toDate={toDate}
-            availableCurrencies={availableCurrencies}
-            onFilterChange={handleFilterChange}
-            onApplyFilters={() => { handleApplyFilters(); setFilterAnchorEl(null); }}
-            onClearFilters={handleClearFilters}
-            onClose={() => setFilterAnchorEl(null)}
-            hasActiveFilters={hasActiveFilters}
-            showKind={false}
-            showType={false}
-            showCurrencies={false}
-          />
-        </Popover>
-
-        {/* Summary by Type - Pie Charts */}
+        {/* Pie Charts */}
         {summary && (
           Object.keys(summary.total_by_type_income ?? {}).length > 0 ||
           Object.keys(summary.total_by_type_expense ?? {}).length > 0
         ) && (
           <Box mb={4}>
-            <Typography variant="h5" fontWeight="bold" mb={3} sx={{ color: COLORS.text.primary }}>
-              Summary by Type
-            </Typography>
             <Box display="flex" flexDirection={{ xs: 'column', lg: 'row' }} gap={3}>
               {/* Income Pie Chart */}
               {Object.keys(summary?.total_by_type_income ?? {}).length > 0 && (
                 <Paper sx={{ flex: 1, p: 3, borderRadius: 3, boxShadow: BOX_SHADOWS.card }}>
                   <Typography variant="h6" fontWeight="bold" mb={2} sx={{ color: COLORS.income.main }}>
-                    Income by Type
+                    Income
                   </Typography>
                   <Box display="flex" flexDirection={{ xs: 'column', md: 'row' }} gap={2} alignItems="center">
                     <Box flex="1" display="flex" justifyContent="center" width="100%" minHeight={250}>
@@ -504,15 +535,15 @@ const Summary: React.FC = () => {
               {Object.keys(summary?.total_by_type_expense ?? {}).length > 0 && (
                 <Paper sx={{ flex: 1, p: 3, borderRadius: 3, boxShadow: BOX_SHADOWS.card }}>
                   <Typography variant="h6" fontWeight="bold" mb={2} sx={{ color: COLORS.expense.main }}>
-                    Expense by Type
+                    Expense
                   </Typography>
                   <Box display="flex" flexDirection={{ xs: 'column', md: 'row' }} gap={2} alignItems="center">
                     <Box flex="1" display="flex" justifyContent="center" width="100%" minHeight={250}>
                       <PieChart
                         series={[{
                           data: Object.entries(summary.total_by_type_expense)
-                            .sort(([, a], [, b]) => b - a)
-                            .map(([type, amount], index) => ({ id: index, value: amount, label: type })),
+                            .sort(([, a], [, b]) => Math.abs(b) - Math.abs(a))
+                            .map(([type, amount], index) => ({ id: index, value: Math.abs(amount), label: type })),
                         }]}
                         height={250}
                       />
@@ -528,12 +559,12 @@ const Summary: React.FC = () => {
                           </TableHead>
                           <TableBody>
                             {Object.entries(summary.total_by_type_expense)
-                              .sort(([, a], [, b]) => b - a)
+                              .sort(([, a], [, b]) => Math.abs(b) - Math.abs(a))
                               .map(([type, amount]) => (
                                 <TableRow key={type} sx={{ '&:hover': { bgcolor: COLORS.background.hover } }}>
                                   <TableCell sx={{ color: COLORS.text.secondary, fontWeight: 500 }}>{type}</TableCell>
                                   <TableCell align="right" sx={{ color: COLORS.expense.main, fontWeight: 600 }}>
-                                    {formatCurrency(amount, summary.currency)}
+                                    {formatCurrency(Math.abs(amount), summary.currency)}
                                   </TableCell>
                                 </TableRow>
                               ))}
@@ -552,7 +583,7 @@ const Summary: React.FC = () => {
         {summary?.groups && summary.groups.length > 0 && (
           <Box mt={4}>
             <Typography variant="h5" fontWeight="bold" mb={3} sx={{ color: COLORS.text.primary }}>
-              Grouped Summary by {filters.group_by}
+              Grouped Summary
             </Typography>
             <TableContainer 
               component={Paper} 

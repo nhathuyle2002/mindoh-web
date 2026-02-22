@@ -24,7 +24,7 @@ import {
   Tooltip,
   Container,
 } from '@mui/material';
-import { FilterList, Add, Edit, Delete, WarningAmber } from '@mui/icons-material';
+import { FilterList, Add, Edit, Delete, WarningAmber, ArrowUpward, ArrowDownward, UnfoldMore } from '@mui/icons-material';
 import { expenseService } from '../services/expenseService';
 import type { ExpenseFilter } from '../services/expenseService';
 import type { Expense } from '../types/api';
@@ -36,6 +36,7 @@ import { formatDateForDisplay, formatDateToYYYYMMDD } from '../common/utils/date
 
 const Dashboard: React.FC = () => {
   const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [count, setCount] = useState<number>(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
@@ -44,6 +45,10 @@ const Dashboard: React.FC = () => {
   const [availableTypes, setAvailableTypes] = useState<string[]>([]);
   const [availableCurrencies, setAvailableCurrencies] = useState<string[]>(['VND', 'USD']);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
+
+  // Sort state: null = no custom sort (uses default date desc)
+  const [sortCol, setSortCol] = useState<string | null>(null);
+  const [sortDir, setSortDir] = useState<'asc' | 'desc' | null>(null);
 
   // Filter states
   const [filters, setFilters] = useState<ExpenseFilter>({
@@ -59,15 +64,24 @@ const Dashboard: React.FC = () => {
   const [toDate, setToDate] = useState<Date | null>(null);
 
   // Add this function to fetch and update expenses
-  const fetchExpenses = async (filterParams?: ExpenseFilter) => {
+  const fetchExpenses = async (filterParams?: ExpenseFilter, col?: string | null, dir?: 'asc' | 'desc' | null) => {
     setLoading(true);
     setError(null);
     try {
-      const result = await expenseService.getExpenses(filterParams);
+      const params: ExpenseFilter = { ...filterParams };
+      const activCol = col !== undefined ? col : sortCol;
+      const activDir = dir !== undefined ? dir : sortDir;
+      if (activCol && activDir) {
+        params.order_by = activCol as ExpenseFilter['order_by'];
+        params.order_dir = activDir;
+      }
+      const result = await expenseService.getExpenses(params);
       setExpenses(result.data);
+      setCount(result.count);
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to fetch expenses');
       setExpenses([]);
+      setCount(0);
     }
     setLoading(false);
   };
@@ -110,7 +124,7 @@ const Dashboard: React.FC = () => {
     if (filters.currencies && filters.currencies.length > 0) cleanFilters.currencies = filters.currencies;
     if (fromDate) cleanFilters.from = formatDateToYYYYMMDD(fromDate);
     if (toDate) cleanFilters.to = formatDateToYYYYMMDD(toDate);
-    fetchExpenses(cleanFilters);
+    fetchExpenses(cleanFilters, sortCol, sortDir);
   };
 
   const handleClearFilters = () => {
@@ -123,7 +137,35 @@ const Dashboard: React.FC = () => {
     });
     setFromDate(null);
     setToDate(null);
-    fetchExpenses({});
+    fetchExpenses({}, sortCol, sortDir);
+  };
+
+  // 3-state sort: first click → desc, second → asc, third → remove
+  const handleSort = (col: string) => {
+    let newCol: string | null;
+    let newDir: 'asc' | 'desc' | null;
+    if (sortCol !== col) {
+      newCol = col; newDir = 'desc';
+    } else if (sortDir === 'desc') {
+      newCol = col; newDir = 'asc';
+    } else {
+      newCol = null; newDir = null;
+    }
+    setSortCol(newCol);
+    setSortDir(newDir);
+    const cleanFilters: ExpenseFilter = {};
+    if (filters.kind) cleanFilters.kind = filters.kind;
+    if (filters.type) cleanFilters.type = filters.type;
+    if (filters.currencies && filters.currencies.length > 0) cleanFilters.currencies = filters.currencies;
+    if (fromDate) cleanFilters.from = formatDateToYYYYMMDD(fromDate);
+    if (toDate) cleanFilters.to = formatDateToYYYYMMDD(toDate);
+    fetchExpenses(cleanFilters, newCol, newDir);
+  };
+
+  const SortIcon = ({ col }: { col: string }) => {
+    if (sortCol !== col) return <UnfoldMore fontSize="small" sx={{ opacity: 0.3, ml: 0.5, verticalAlign: 'middle' }} />;
+    if (sortDir === 'desc') return <ArrowDownward fontSize="small" sx={{ ml: 0.5, verticalAlign: 'middle', color: 'primary.main' }} />;
+    return <ArrowUpward fontSize="small" sx={{ ml: 0.5, verticalAlign: 'middle', color: 'primary.main' }} />;
   };
 
   const handleDeleteExpense = async (id: number) => {
@@ -265,9 +307,16 @@ const Dashboard: React.FC = () => {
 
       <Paper sx={{ p: { xs: 2, sm: 3 }, borderRadius: 2 }} elevation={2}>
         <Box display="flex" alignItems="center" justifyContent="space-between" mb={1}>
-          <Typography variant="h5" fontWeight={600}>
-            Transactions
-          </Typography>
+          <Box display="flex" alignItems="baseline" gap={1.5}>
+            <Typography variant="h5" fontWeight={600}>
+              Transactions
+            </Typography>
+            {!loading && (
+              <Typography variant="body2" sx={{ color: COLORS.text.tertiary }}>
+                {count} {count === 1 ? 'record' : 'records'}
+              </Typography>
+            )}
+          </Box>
           <Button variant="contained" startIcon={<Add />} onClick={handleOpen} size="small"
             sx={{ background: 'linear-gradient(135deg, #43e97b 0%, #28C76F 100%)', boxShadow: '0 4px 12px rgba(40,199,111,0.3)', '&:hover': { boxShadow: '0 6px 16px rgba(40,199,111,0.4)', transform: 'translateY(-1px)' }, transition: 'all 0.2s ease' }}>
             Add Transaction
@@ -279,11 +328,21 @@ const Dashboard: React.FC = () => {
             <Table sx={{ minWidth: 650 }} size="medium">
               <TableHead>
                 <TableRow sx={{ bgcolor: 'action.hover' }}>
-                  <TableCell sx={{ fontWeight: 600 }}>Date</TableCell>
-                  <TableCell sx={{ fontWeight: 600 }}>Kind</TableCell>
-                  <TableCell align="right" sx={{ fontWeight: 600 }}>Amount</TableCell>
-                  <TableCell sx={{ fontWeight: 600 }}>Type</TableCell>
-                  <TableCell sx={{ fontWeight: 600 }}>Resource</TableCell>
+                  <TableCell sx={{ fontWeight: 600, cursor: 'pointer', userSelect: 'none' }} onClick={() => handleSort('date')}>
+                    Date <SortIcon col="date" />
+                  </TableCell>
+                  <TableCell sx={{ fontWeight: 600, cursor: 'pointer', userSelect: 'none' }} onClick={() => handleSort('kind')}>
+                    Kind <SortIcon col="kind" />
+                  </TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 600, cursor: 'pointer', userSelect: 'none' }} onClick={() => handleSort('amount')}>
+                    Amount <SortIcon col="amount" />
+                  </TableCell>
+                  <TableCell sx={{ fontWeight: 600, cursor: 'pointer', userSelect: 'none' }} onClick={() => handleSort('type')}>
+                    Type <SortIcon col="type" />
+                  </TableCell>
+                  <TableCell sx={{ fontWeight: 600, cursor: 'pointer', userSelect: 'none' }} onClick={() => handleSort('currency')}>
+                    Resource <SortIcon col="currency" />
+                  </TableCell>
                   <TableCell sx={{ fontWeight: 600 }}>Description</TableCell>
                   <TableCell align="center" sx={{ fontWeight: 600 }}>Actions</TableCell>
                 </TableRow>
