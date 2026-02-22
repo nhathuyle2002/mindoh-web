@@ -3,7 +3,7 @@ import { ThemeProvider, CssBaseline, createTheme } from '@mui/material';
 import { AuthProvider } from './contexts/AuthContext';
 import Login from './components/Login';
 import Register from './components/Register';
-import Dashboard from './components/Dashboard';
+import Transactions from './components/Transactions';
 import Summary from './components/Summary';
 import Layout from './components/Layout';
 import AddExpense from './components/AddExpense';
@@ -54,7 +54,7 @@ function App() {
               element={
                 <ProtectedRoute>
                   <Layout>
-                    <Dashboard />
+                    <Transactions />
                   </Layout>
                 </ProtectedRoute>
               }

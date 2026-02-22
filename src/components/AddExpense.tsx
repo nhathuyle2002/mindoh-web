@@ -154,9 +154,9 @@ const AddExpense: React.FC<AddExpenseProps> = ({ expense, onExpenseAdded, onClos
   };
 
   return (
-    <Container maxWidth="md">
+    <Container maxWidth="md" sx={{ px: { xs: 0, sm: 2 } }}>
       <Paper elevation={0} sx={{ 
-        p: 4, 
+        p: { xs: 2.5, sm: 4 }, 
         position: 'relative',
       }}>
         <IconButton

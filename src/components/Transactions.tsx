@@ -35,7 +35,7 @@ import FilterSection from '../common/FilterSection';
 import { formatDateForDisplay, formatDateToYYYYMMDD } from '../common/utils/dateUtils';
 import type { SummaryFilter } from '../services/expenseService';
 
-const Dashboard: React.FC = () => {
+const Transactions: React.FC = () => {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [total, setTotal] = useState<number>(0);
   const [page, setPage] = useState<number>(0); // 0-indexed for MUI
@@ -504,7 +504,14 @@ const Dashboard: React.FC = () => {
             rowsPerPage={rowsPerPage}
             onRowsPerPageChange={handleChangeRowsPerPage}
             rowsPerPageOptions={[10, 25, 50, 100]}
-            sx={{ borderTop: '1px solid', borderColor: 'divider' }}
+            sx={{
+              position: 'sticky',
+              bottom: 0,
+              bgcolor: 'background.paper',
+              borderTop: '1px solid',
+              borderColor: 'divider',
+              zIndex: 5,
+            }}
           />
           </>
         ) : (
@@ -526,4 +533,4 @@ const Dashboard: React.FC = () => {
   );
 };
 
-export default Dashboard;
+export default Transactions;

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Container,
   Paper,
@@ -23,7 +23,6 @@ import {
   InputLabel,
   Switch,
   FormControlLabel,
-  TablePagination,
 } from '@mui/material';
 import { format, startOfMonth, endOfMonth, subMonths, subDays } from 'date-fns';
 import { 
@@ -46,10 +45,6 @@ type DatePreset = 'all' | 'last_7d' | 'this_month' | 'last_3m' | 'last_6m' | 'la
 const Summary: React.FC = () => {
   const [summary, setSummary] = useState<ExpenseSummaryType | null>(null);
   const [groups, setGroups] = useState<ExpenseGroup[]>([]);
-  const [groupsTotal, setGroupsTotal] = useState(0);
-  const [groupsPage, setGroupsPage] = useState(0);
-  const [groupsPageSize, setGroupsPageSize] = useState(12);
-  const groupsFilterRef = useRef<GroupsFilter | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [availableCurrencies, setAvailableCurrencies] = useState<string[]>(['VND', 'USD']);
@@ -82,10 +77,8 @@ const Summary: React.FC = () => {
     try {
       const result = await expenseService.getGroups(filterParams);
       setGroups(result.groups);
-      setGroupsTotal(result.total);
     } catch {
       setGroups([]);
-      setGroupsTotal(0);
     }
   };
 
@@ -102,25 +95,7 @@ const Summary: React.FC = () => {
         from: params.from ? format(params.from, 'yyyy-MM-dd') : undefined,
         to: params.to ? format(params.to, 'yyyy-MM-dd') : undefined,
       };
-      groupsFilterRef.current = gf;
-      setGroupsPage(0);
-      fetchGroups({ ...gf, page: 1, page_size: groupsPageSize });
-    }
-  };
-
-  const handleGroupsPageChange = (_: unknown, newPage: number) => {
-    setGroupsPage(newPage);
-    if (groupsFilterRef.current) {
-      fetchGroups({ ...groupsFilterRef.current, page: newPage + 1, page_size: groupsPageSize });
-    }
-  };
-
-  const handleGroupsRowsPerPageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newSize = parseInt(e.target.value, 10);
-    setGroupsPageSize(newSize);
-    setGroupsPage(0);
-    if (groupsFilterRef.current) {
-      fetchGroups({ ...groupsFilterRef.current, page: 1, page_size: newSize });
+      fetchGroups(gf);
     }
   };
 
@@ -257,29 +232,30 @@ const Summary: React.FC = () => {
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', bgcolor: COLORS.background.main }}>
-      <Container maxWidth={false} disableGutters sx={{ mt: 4, mb: 4, flexGrow: 1, px: { xs: 2, sm: 3, md: 4 } }}>
+      <Container maxWidth={false} disableGutters sx={{ mt: { xs: 1, md: 4 }, mb: 4, flexGrow: 1, px: { xs: 1.5, sm: 2, md: 4 } }}>
         {/* Filter Bar - Always Visible */}
         <LocalizationProvider dateAdapter={AdapterDateFns}>
-          <Paper sx={{ p: 2, mb: 3, borderRadius: 3, boxShadow: BOX_SHADOWS.card }}>
-            <Box display="flex" justifyContent="space-between" alignItems="flex-start" flexWrap="wrap" gap={2}>
-              {/* Left: date presets */}
-              <Box display="flex" flexDirection="column" gap={1.5}>
+          <Paper sx={{ p: { xs: 1.5, md: 2 }, mb: 3, borderRadius: 3, boxShadow: BOX_SHADOWS.card }}>
+            <Box display="flex" flexDirection={{ xs: 'column', md: 'row' }} justifyContent="space-between" alignItems="flex-start" gap={2}>
+              {/* Date presets + custom range */}
+              <Box display="flex" flexDirection="column" gap={1.5} width={{ xs: '100%', md: 'auto' }}>
                 <ToggleButtonGroup
                   value={datePreset}
                   exclusive
                   onChange={handlePresetChange}
                   size="small"
+                  sx={{ flexWrap: 'wrap', gap: 0.5 }}
                 >
                   {([
                     ['all',        'All'],
-                    ['last_7d',    'Last 7 Days'],
+                    ['last_7d',    'Last 7d'],
                     ['this_month', 'This Month'],
-                    ['last_3m',   'Last 3 Months'],
-                    ['last_6m',   'Last 6 Months'],
-                    ['last_12m',  'Last 12 Months'],
+                    ['last_3m',   'Last 3M'],
+                    ['last_6m',   'Last 6M'],
+                    ['last_12m',  'Last 12M'],
                     ['custom',     'Custom'],
                   ] as const).map(([v, label]) => (
-                    <ToggleButton key={v} value={v} sx={{ minWidth: 96 }}>
+                    <ToggleButton key={v} value={v} sx={{ minWidth: { xs: 70, md: 90 }, fontSize: { xs: '0.72rem', md: '0.8125rem' }, px: { xs: 1, md: 1.5 } }}>
                       {label}
                     </ToggleButton>
                   ))}
@@ -290,7 +266,7 @@ const Summary: React.FC = () => {
                     value={fromDate}
                     onChange={handleCustomFromChange}
                     disabled={!isCustom}
-                    slotProps={{ textField: { size: 'small' } }}
+                    slotProps={{ textField: { size: 'small', sx: { width: { xs: '140px', md: 'auto' } } } }}
                   />
                   <Typography variant="body2" sx={{ color: COLORS.text.tertiary }}>→</Typography>
                   <DatePicker
@@ -298,19 +274,19 @@ const Summary: React.FC = () => {
                     value={toDate}
                     onChange={handleCustomToChange}
                     disabled={!isCustom}
-                    slotProps={{ textField: { size: 'small' } }}
+                    slotProps={{ textField: { size: 'small', sx: { width: { xs: '140px', md: 'auto' } } } }}
                   />
                 </Box>
               </Box>
-              {/* Right: currency controls (top) + group-by (bottom) */}
-              <Box display="flex" flexDirection="column" alignItems="flex-end" gap={1.5}>
-                {/* Top row: By Currency toggle + Currency selector */}
-                <Box display="flex" alignItems="center" gap={2} flexWrap="wrap" justifyContent="flex-end">
+              {/* Currency + group-by controls */}
+              <Box display="flex" flexDirection={{ xs: 'row', md: 'column' }} alignItems={{ xs: 'center', md: 'flex-end' }} gap={1.5} flexWrap="wrap">
+                {/* By Currency toggle + Currency selector */}
+                <Box display="flex" alignItems="center" gap={1.5} flexWrap="wrap">
                   <FormControlLabel
                     control={<Switch checked={showByCurrency} onChange={(e) => setShowByCurrency(e.target.checked)} size="small" />}
                     label={<Typography variant="body2" sx={{ color: COLORS.text.secondary }}>By Currency</Typography>}
                   />
-                  <FormControl size="small" sx={{ minWidth: 150 }}>
+                  <FormControl size="small" sx={{ minWidth: 120 }}>
                     <InputLabel>Currency</InputLabel>
                     <Select
                       value={originalCurrency}
@@ -323,9 +299,9 @@ const Summary: React.FC = () => {
                     </Select>
                   </FormControl>
                 </Box>
-                {/* Bottom row: Group by toggle */}
-                <Box display="flex" flexDirection="column" alignItems="flex-end" gap={0.5}>
-                  <Typography variant="caption" sx={{ color: COLORS.text.tertiary, fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+                {/* Group by toggle */}
+                <Box display="flex" alignItems="center" gap={1}>
+                  <Typography variant="caption" sx={{ color: COLORS.text.tertiary, fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
                     Group by
                   </Typography>
                   <ToggleButtonGroup
@@ -335,7 +311,7 @@ const Summary: React.FC = () => {
                     size="small"
                   >
                     {(['DAY', 'WEEK', 'MONTH'] as const).map((v) => (
-                      <ToggleButton key={v} value={v} sx={{ minWidth: 96 }}>
+                      <ToggleButton key={v} value={v} sx={{ minWidth: { xs: 52, md: 72 }, fontSize: { xs: '0.72rem', md: '0.8125rem' } }}>
                         {v.charAt(0) + v.slice(1).toLowerCase()}
                       </ToggleButton>
                     ))}
@@ -348,20 +324,20 @@ const Summary: React.FC = () => {
 
         {/* Exchange Rates - Top Right */}
         {Object.keys(exchangeRates).length > 0 && (
-          <Box display="flex" justifyContent="flex-end" mb={2}>
-            <Typography variant="caption" sx={{ color: COLORS.text.tertiary, mr: 2 }}>
-              Exchange Rates to {baseCurrency}:
+          <Box display="flex" flexWrap="wrap" justifyContent="flex-end" mb={2} gap={0.5}>
+            <Typography variant="caption" sx={{ color: COLORS.text.tertiary, mr: 0.5 }}>
+              Rates → {baseCurrency}:
             </Typography>
             {Object.entries(exchangeRates)
               .filter(([curr]) => curr !== baseCurrency)
-              .map(([currency, rate], index) => (
+              .map(([currency, rate]) => (
                 <Typography
                   key={currency}
                   component="span"
                   variant="caption"
-                  sx={{ color: COLORS.text.secondary, mr: 2 }}
+                  sx={{ color: COLORS.text.secondary, mr: 1.5 }}
                 >
-                  {index > 0 && '• '}1 {currency} = {rate.toLocaleString()} {CURRENCY_SYMBOLS[baseCurrency] || baseCurrency}
+                  1 {currency} = {rate.toLocaleString()} {CURRENCY_SYMBOLS[baseCurrency] || baseCurrency}
                 </Typography>
               ))}
           </Box>
@@ -698,21 +674,14 @@ const Summary: React.FC = () => {
           </Paper>
         )}
 
-        {/* Grouped Summary - Table Format */}
+        {/* Grouped table */}
         {groups.length > 0 && (
-          <Box mt={4}>
-            <Typography variant="h5" fontWeight="bold" mb={3} sx={{ color: COLORS.text.primary }}>
-              Grouped Summary
-            </Typography>
-            <TableContainer 
-              component={Paper} 
-              sx={{ 
-                borderRadius: 3, 
-                boxShadow: BOX_SHADOWS.card,
-                overflow: 'hidden',
-              }}
+          <Box mt={2} mb={4}>
+            <TableContainer
+              component={Paper}
+              sx={{ borderRadius: 3, boxShadow: BOX_SHADOWS.card, overflowX: 'auto' }}
             >
-              <Table>
+              <Table sx={{ minWidth: 560 }}>
                 <TableHead>
                   <TableRow sx={{ bgcolor: COLORS.gradients.primary }}>
                     <TableCell sx={{ fontWeight: 'bold', color: COLORS.text.primary }}>Period</TableCell>
@@ -724,40 +693,28 @@ const Summary: React.FC = () => {
                 </TableHead>
                 <TableBody>
                   {groups.map((group) => (
-                    <TableRow 
-                      key={group.key}
-                      sx={{ 
-                        '&:hover': { bgcolor: COLORS.background.hover },
-                        transition: 'background-color 0.2s ease',
-                      }}
-                    >
-                      <TableCell sx={{ color: COLORS.text.primary, fontWeight: 600 }}>
-                        {group.label}
-                      </TableCell>
+                    <TableRow key={group.key} sx={{ '&:hover': { bgcolor: COLORS.background.hover }, transition: 'background-color 0.2s ease' }}>
+                      <TableCell sx={{ color: COLORS.text.primary, fontWeight: 600 }}>{group.label}</TableCell>
                       <TableCell align="right" sx={{ color: COLORS.income.main, fontWeight: 600 }}>
                         {formatCurrency(group.income, summary?.currency ?? '')}
                       </TableCell>
                       <TableCell align="right" sx={{ color: COLORS.expense.main, fontWeight: 600 }}>
                         {formatCurrency(group.expense, summary?.currency ?? '')}
                       </TableCell>
-                      <TableCell 
-                        align="right" 
-                        sx={{ 
-                          color: group.balance >= 0 ? COLORS.income.main : COLORS.expense.main,
-                          fontWeight: 600,
-                        }}
-                      >
+                      <TableCell align="right" sx={{ color: group.balance >= 0 ? COLORS.income.main : COLORS.expense.main, fontWeight: 600 }}>
                         {group.balance < 0 ? '-' : ''}{formatCurrency(Math.abs(group.balance), summary?.currency ?? '')} {group.balance >= 0 ? '↑' : '↓'}
                       </TableCell>
-                      <TableCell sx={{ color: COLORS.text.secondary, fontSize: '0.875rem' }}>
+                      <TableCell sx={{ color: COLORS.text.secondary, fontSize: '0.8rem', maxWidth: 180 }}>
                         {Object.keys(group.total_by_type).length > 0 ? (
-                          Object.entries(group.total_by_type)
-                            .sort(([, a], [, b]) => (b as number) - (a as number))
-                            .map(([type, amount]) => (
-                              <Box key={type} component="span" sx={{ display: 'block', mb: 0.5 }}>
-                                {type}: {formatCurrency(amount, summary?.currency ?? '')}
-                              </Box>
-                            ))
+                          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                            {Object.entries(group.total_by_type)
+                              .sort(([, a], [, b]) => (b as number) - (a as number))
+                              .map(([type, amount]) => (
+                                <Box key={type} component="span" sx={{ px: 0.75, py: 0.25, borderRadius: 1, bgcolor: 'action.hover', fontSize: '0.75rem', whiteSpace: 'nowrap' }}>
+                                  {type}: {formatCurrency(amount, summary?.currency ?? '')}
+                                </Box>
+                              ))}
+                          </Box>
                         ) : (
                           <Box component="span" sx={{ color: COLORS.text.tertiary }}>-</Box>
                         )}
@@ -766,16 +723,6 @@ const Summary: React.FC = () => {
                   ))}
                 </TableBody>
               </Table>
-              <TablePagination
-                component="div"
-                count={groupsTotal}
-                page={groupsPage}
-                onPageChange={handleGroupsPageChange}
-                rowsPerPage={groupsPageSize}
-                onRowsPerPageChange={handleGroupsRowsPerPageChange}
-                rowsPerPageOptions={[6, 12, 24, 50]}
-                sx={{ color: COLORS.text.secondary }}
-              />
             </TableContainer>
           </Box>
         )}
