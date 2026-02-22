@@ -1,18 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Container,
   Paper,
   Typography,
   Box,
   Chip,
-  CircularProgress,
+  Skeleton,
   Alert,
   Button,
   Dialog,
   DialogContent,
-  Collapse,
+  DialogTitle,
+  DialogActions,
   Divider,
   Fade,
+  Popover,
   Table,
   TableBody,
   TableCell,
@@ -21,8 +22,9 @@ import {
   TableRow,
   IconButton,
   Tooltip,
+  Container,
 } from '@mui/material';
-import { FilterList, Add, Edit, Delete } from '@mui/icons-material';
+import { FilterList, Add, Edit, Delete, WarningAmber } from '@mui/icons-material';
 import { expenseService } from '../services/expenseService';
 import type { ExpenseFilter, ExpenseSummary } from '../services/expenseService';
 import type { Expense } from '../types/api';
@@ -38,7 +40,8 @@ const Dashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
-  const [showFilters, setShowFilters] = useState(false);
+  const [filterAnchorEl, setFilterAnchorEl] = useState<HTMLElement | null>(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
   const [availableTypes, setAvailableTypes] = useState<string[]>([]);
   const [availableCurrencies, setAvailableCurrencies] = useState<string[]>(['VND', 'USD']);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
@@ -148,14 +151,18 @@ const Dashboard: React.FC = () => {
   };
 
   const handleDeleteExpense = async (id: number) => {
-    if (!window.confirm('Are you sure you want to delete this expense?')) {
-      return;
-    }
+    setDeleteConfirmId(id);
+  };
+
+  const confirmDelete = async () => {
+    if (deleteConfirmId === null) return;
     try {
-      await expenseService.deleteExpense(id);
-      fetchExpenses(filters); // Refresh the list
+      await expenseService.deleteExpense(deleteConfirmId);
+      fetchExpenses(filters);
     } catch (err: any) {
       setError(err.response?.data?.error || 'Failed to delete expense');
+    } finally {
+      setDeleteConfirmId(null);
     }
   };
 
@@ -167,7 +174,6 @@ const Dashboard: React.FC = () => {
   const hasActiveFilters = !!(filters.kind || filters.type || (filters.currencies && filters.currencies.length > 0) || fromDate || toDate);
 
   const formatCurrency = (amount: number, currency: string) => {
-    // VND doesn't use decimal places
     const decimals = currency === 'VND' ? 0 : 2;
     const formatted = new Intl.NumberFormat('en-US', {
       minimumFractionDigits: decimals,
@@ -181,40 +187,53 @@ const Dashboard: React.FC = () => {
     return formatDateForDisplay(dateString);
   };
 
-  if (loading) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="80vh" bgcolor={COLORS.background.main}>
-        <CircularProgress />
-      </Box>
-    );
+  if (loading && !expenses.length) {
+    // show skeleton inline in table instead of full-page spinner
   }
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', bgcolor: COLORS.background.main }}>
       <Container maxWidth={false} disableGutters sx={{ mt: 4, mb: 4, flexGrow: 1, px: { xs: 2, sm: 3, md: 4 } }}>
-      <Dialog 
-        open={open} 
-        onClose={handleClose} 
-        maxWidth="md" 
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteConfirmId !== null} onClose={() => setDeleteConfirmId(null)} maxWidth="xs" fullWidth
+        PaperProps={{ sx: { borderRadius: 3 } }}>
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1, pb: 1 }}>
+          <WarningAmber sx={{ color: '#EA5455' }} />
+          Delete Transaction
+        </DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary">
+            This action cannot be undone. The transaction will be permanently removed.
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={() => setDeleteConfirmId(null)} variant="outlined" size="small">
+            Cancel
+          </Button>
+          <Button onClick={confirmDelete} variant="contained" size="small"
+            sx={{ bgcolor: '#EA5455', '&:hover': { bgcolor: '#d43d3e' } }}>
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Add/Edit Expense Dialog */}
+      <Dialog
+        open={open}
+        onClose={handleClose}
+        maxWidth="md"
         fullWidth
-        PaperProps={{
-          sx: {
-            boxShadow: 'none',
-            borderRadius: 4,
-          }
-        }}
+        PaperProps={{ sx: { boxShadow: 'none', borderRadius: 4 } }}
       >
         <DialogContent sx={{ p: 0 }}>
-          <AddExpense 
+          <AddExpense
             expense={editingExpense}
-            onExpenseAdded={() => { 
-              handleClose(); 
-              fetchExpenses(); 
-            }} 
+            onExpenseAdded={() => { handleClose(); fetchExpenses(); }}
             onClose={handleClose}
           />
         </DialogContent>
       </Dialog>
+
       {error && (
         <Alert severity="error" sx={{ mb: 3 }} variant="filled">{error}</Alert>
       )}
@@ -247,7 +266,7 @@ const Dashboard: React.FC = () => {
         <Button 
           variant="outlined"
           startIcon={<FilterList />} 
-          onClick={() => setShowFilters(!showFilters)}
+          onClick={(e) => setFilterAnchorEl(filterAnchorEl ? null : e.currentTarget)}
           size="small"
           sx={{ 
             fontSize: '0.875rem',
@@ -265,7 +284,14 @@ const Dashboard: React.FC = () => {
         </Button>
       </Box>
 
-      <Collapse in={showFilters}>
+      <Popover
+        open={Boolean(filterAnchorEl)}
+        anchorEl={filterAnchorEl}
+        onClose={() => setFilterAnchorEl(null)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+        transformOrigin={{ vertical: 'top', horizontal: 'left' }}
+        PaperProps={{ sx: { mt: 1, width: 720, maxWidth: '95vw', borderRadius: 2, boxShadow: '0 8px 32px rgba(0,0,0,0.15)' } }}
+      >
         <FilterSection
           filters={filters}
           fromDate={fromDate}
@@ -273,24 +299,25 @@ const Dashboard: React.FC = () => {
           availableTypes={availableTypes}
           availableCurrencies={availableCurrencies}
           onFilterChange={handleFilterChange}
-          onApplyFilters={handleApplyFilters}
+          onApplyFilters={() => { handleApplyFilters(); setFilterAnchorEl(null); }}
           onClearFilters={handleClearFilters}
-          onClose={() => setShowFilters(false)}
+          onClose={() => setFilterAnchorEl(null)}
           hasActiveFilters={hasActiveFilters}
         />
-      </Collapse>
+      </Popover>
 
       <Paper sx={{ p: { xs: 2, sm: 3 }, borderRadius: 2 }} elevation={2}>
         <Box display="flex" alignItems="center" justifyContent="space-between" mb={1}>
-          <Button variant="contained" startIcon={<Add />} onClick={handleOpen} size="small">
-            Add Transaction
-          </Button>
           <Typography variant="h5" fontWeight={600}>
             Transactions
           </Typography>
+          <Button variant="contained" startIcon={<Add />} onClick={handleOpen} size="small"
+            sx={{ background: 'linear-gradient(135deg, #43e97b 0%, #28C76F 100%)', boxShadow: '0 4px 12px rgba(40,199,111,0.3)', '&:hover': { boxShadow: '0 6px 16px rgba(40,199,111,0.4)', transform: 'translateY(-1px)' }, transition: 'all 0.2s ease' }}>
+            Add Transaction
+          </Button>
         </Box>
         <Divider sx={{ mb: 2 }} />
-        {expenses.length > 0 ? (
+        {loading || expenses.length > 0 ? (
           <TableContainer>
             <Table sx={{ minWidth: 650 }} size="medium">
               <TableHead>
@@ -305,12 +332,28 @@ const Dashboard: React.FC = () => {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {expenses.map((expense, index) => (
+                {loading ? (
+                  [...Array(5)].map((_, i) => (
+                    <TableRow key={i}>
+                      <TableCell><Skeleton variant="text" width={80} /></TableCell>
+                      <TableCell><Skeleton variant="rounded" width={64} height={24} /></TableCell>
+                      <TableCell align="right"><Skeleton variant="text" width={90} /></TableCell>
+                      <TableCell><Skeleton variant="text" width={60} /></TableCell>
+                      <TableCell><Skeleton variant="text" width={70} /></TableCell>
+                      <TableCell><Skeleton variant="text" width={120} /></TableCell>
+                      <TableCell align="center"><Skeleton variant="rounded" width={64} height={32} /></TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  expenses.map((expense, index) => (
                   <Fade in={true} timeout={300 + index * 50} key={expense.id}>
                     <TableRow
                       sx={{ 
-                        '&:hover': { bgcolor: 'action.hover' },
-                        '&:last-child td, &:last-child th': { border: 0 }
+                        '&:hover': { bgcolor: 'rgba(0,0,0,0.02)' },
+                        '&:last-child td, &:last-child th': { border: 0 },
+                        borderLeft: expense.kind === 'income' ? '3px solid #28C76F' : '3px solid #EA5455',
+                        transition: 'background 0.15s, transform 0.15s',
+                        '&:hover td:first-of-type': { paddingLeft: '13px' },
                       }}
                     >
                       <TableCell>
@@ -374,7 +417,8 @@ const Dashboard: React.FC = () => {
                       </TableCell>
                     </TableRow>
                   </Fade>
-                ))}
+                  ))
+                )}
               </TableBody>
             </Table>
           </TableContainer>

@@ -23,7 +23,7 @@ const Register: React.FC = () => {
 
   useEffect(() => {
     if (state.user) {
-      navigate('/dashboard');
+      navigate('/transactions');
     }
   }, [state.user, navigate]);
 

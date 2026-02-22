@@ -9,7 +9,35 @@ import Layout from './components/Layout';
 import AddExpense from './components/AddExpense';
 import ProtectedRoute from './components/ProtectedRoute';
 
-const theme = createTheme();
+const theme = createTheme({
+  typography: {
+    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+    h1: { fontWeight: 800 },
+    h2: { fontWeight: 800 },
+    h3: { fontWeight: 700 },
+    h4: { fontWeight: 700 },
+    h5: { fontWeight: 600 },
+    h6: { fontWeight: 600 },
+    subtitle1: { fontWeight: 500 },
+    button: { fontWeight: 600, textTransform: 'none' as const },
+  },
+  shape: { borderRadius: 10 },
+  components: {
+    MuiButton: {
+      styleOverrides: {
+        root: { textTransform: 'none', fontWeight: 600, letterSpacing: 0.2 },
+      },
+    },
+    MuiPaper: {
+      styleOverrides: { root: { backgroundImage: 'none' } },
+    },
+    MuiTableCell: {
+      styleOverrides: {
+        root: { fontFamily: "'Inter', sans-serif" },
+      },
+    },
+  },
+});
 
 function App() {
   return (
@@ -21,7 +49,7 @@ function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route
-              path="/dashboard"
+              path="/transactions"
               element={
                 <ProtectedRoute>
                   <Layout>

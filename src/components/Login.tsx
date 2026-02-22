@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import {
-  Paper,
   TextField,
   Button,
   Typography,
@@ -13,7 +12,6 @@ import {
 } from '@mui/material';
 import { Visibility, VisibilityOff, AccountCircle, Lock } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
-import { COLORS, BOX_SHADOWS } from '../constants/colors';
 
 const Login: React.FC = () => {
   const [username, setUsername] = useState('');
@@ -24,7 +22,7 @@ const Login: React.FC = () => {
 
   useEffect(() => {
     if (state.user) {
-      navigate('/dashboard');
+      navigate('/transactions');
     }
   }, [state.user, navigate]);
 
@@ -36,204 +34,91 @@ useEffect(() => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (username && password) {
-      await login(username, password);
-    }
+    await login(username, password);
+  };
+
+  const fieldSx = {
+    '& .MuiOutlinedInput-root': {
+      borderRadius: 2, bgcolor: '#fff',
+      '&:hover fieldset': { borderColor: '#28C76F' },
+      '&.Mui-focused fieldset': { borderColor: '#28C76F' },
+    },
   };
 
   return (
-    <Box
-      sx={{
-        minHeight: '100vh',
-        width: '100vw',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: COLORS.gradients.primary,
-        py: 4,
-        px: 2,
-      }}
-    >
-      <Paper 
-        elevation={0} 
-        sx={{ 
-          padding: { xs: 3, sm: 5 }, 
-          width: '100%',
-          maxWidth: '500px',
-          borderRadius: 4,
-          boxShadow: BOX_SHADOWS.card,
-          background: COLORS.background.paper,
-        }}
-      >
-        {/* Logo/Brand Section */}
-        <Box sx={{ textAlign: 'center', mb: 4 }}>
-              <Typography 
-                component="h1" 
-                variant="h3" 
-                sx={{ 
-                  fontWeight: 800,
-                  background: COLORS.gradients.income,
-                  backgroundClip: 'text',
-                  WebkitBackgroundClip: 'text',
-                  WebkitTextFillColor: 'transparent',
-                  mb: 1,
-                }}
-              >
-                Mindoh
-              </Typography>
-              <Typography 
-                variant="body1" 
-                sx={{ 
-                  color: COLORS.text.tertiary,
-                  fontWeight: 500,
-                }}
-              >
-                Your personal expense tracker
-              </Typography>
-            </Box>
+    <Box sx={{ display: 'flex', minHeight: '100vh' }}>
+      {/* Left branding panel */}
+      <Box sx={{
+        display: { xs: 'none', md: 'flex' }, flexDirection: 'column',
+        justifyContent: 'center', alignItems: 'flex-start',
+        width: '45%', px: 8, py: 6,
+        background: 'linear-gradient(160deg, #1e2d50 0%, #090912 100%)',
+      }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 5 }}>
+          <Box component="img" src="/favicon.svg" alt="logo" sx={{ width: 52, height: 52 }} />
+          <Typography variant="h4" sx={{ fontWeight: 800, color: '#a3ffcb', letterSpacing: 0.5 }}>Mindoh</Typography>
+        </Box>
+        <Typography variant="h3" sx={{ fontWeight: 800, color: '#ffffff', mb: 2, lineHeight: 1.2 }}>
+          Track smarter,<br />spend better.
+        </Typography>
+        <Typography variant="body1" sx={{ color: 'rgba(163,255,203,0.65)', mb: 5, lineHeight: 1.8, maxWidth: 380 }}>
+          Your all-in-one personal finance tracker. Monitor income, expenses, and balance across multiple currencies.
+        </Typography>
+        {['\u{1F4CA} Visual summaries with charts', '\u{1F4B1} Multi-currency support', '\u{1F50D} Powerful filters & grouping'].map(f => (
+          <Typography key={f} variant="body2" sx={{ color: 'rgba(255,255,255,0.55)', mb: 1.2, fontWeight: 500 }}>{f}</Typography>
+        ))}
+      </Box>
 
-            <Typography 
-              component="h2" 
-              variant="h5" 
-              align="center" 
-              sx={{ 
-                mb: 3,
-                fontWeight: 700,
-                color: COLORS.text.primary,
+      {/* Right form panel */}
+      <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f4f6f9', px: { xs: 3, sm: 8 } }}>
+        <Box sx={{ width: '100%', maxWidth: 420 }}>
+          <Box sx={{ display: { xs: 'flex', md: 'none' }, alignItems: 'center', gap: 1.5, mb: 4 }}>
+            <Box component="img" src="/favicon.svg" alt="logo" sx={{ width: 40, height: 40 }} />
+            <Typography variant="h5" fontWeight={800} sx={{ color: '#1a202c' }}>Mindoh</Typography>
+          </Box>
+          <Typography variant="h4" fontWeight={800} sx={{ color: '#1a202c', mb: 0.5 }}>Welcome back</Typography>
+          <Typography variant="body2" sx={{ color: '#718096', mb: 4 }}>Sign in to your account to continue</Typography>
+          {state.error && <Alert severity="error" sx={{ mb: 3, borderRadius: 2 }}>{state.error}</Alert>}
+          <Box component="form" onSubmit={handleSubmit}>
+            <TextField
+              margin="normal" required fullWidth label="Username"
+              autoComplete="username" autoFocus
+              value={username} onChange={(e) => setUsername(e.target.value)}
+              disabled={state.loading}
+              InputProps={{ startAdornment: <InputAdornment position="start"><AccountCircle sx={{ color: '#a0aec0', fontSize: 20 }} /></InputAdornment> }}
+              sx={fieldSx}
+            />
+            <TextField
+              margin="normal" required fullWidth label="Password"
+              type={showPassword ? 'text' : 'password'} autoComplete="current-password"
+              value={password} onChange={(e) => setPassword(e.target.value)}
+              disabled={state.loading}
+              InputProps={{
+                startAdornment: <InputAdornment position="start"><Lock sx={{ color: '#a0aec0', fontSize: 20 }} /></InputAdornment>,
+                endAdornment: <InputAdornment position="end"><IconButton onClick={() => setShowPassword(!showPassword)} edge="end" size="small">{showPassword ? <VisibilityOff fontSize="small" /> : <Visibility fontSize="small" />}</IconButton></InputAdornment>,
               }}
-            >
-              Welcome Back
+              sx={fieldSx}
+            />
+            <Button type="submit" fullWidth variant="contained" disabled={state.loading}
+              sx={{
+                mt: 3, mb: 2, py: 1.4, borderRadius: 2, fontWeight: 700, fontSize: '1rem',
+                background: 'linear-gradient(135deg, #43e97b 0%, #28C76F 100%)',
+                boxShadow: '0 4px 20px rgba(40,199,111,0.35)',
+                '&:hover': { background: 'linear-gradient(135deg, #43e97b 0%, #1ea55a 100%)', boxShadow: '0 6px 24px rgba(40,199,111,0.45)', transform: 'translateY(-1px)' },
+                transition: 'all 0.25s ease',
+              }}>
+              {state.loading ? <CircularProgress size={24} color="inherit" /> : 'Sign In'}
+            </Button>
+            <Typography variant="body2" align="center" sx={{ color: '#718096' }}>
+              Don't have an account?{' '}
+              <Link to="/register" style={{ textDecoration: 'none', color: '#28C76F', fontWeight: 600 }}>Sign Up</Link>
             </Typography>
-            
-            {state.error && (
-              <Alert 
-                severity="error" 
-                sx={{ 
-                  mb: 3,
-                  borderRadius: 2,
-                }}
-              >
-                {state.error}
-              </Alert>
-            )}
-            
-            <Box component="form" onSubmit={handleSubmit}>
-              <TextField
-                margin="normal"
-                required
-                fullWidth
-                id="username"
-                label="Username"
-                name="username"
-                autoComplete="username"
-                autoFocus
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                disabled={state.loading}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <AccountCircle sx={{ color: COLORS.text.tertiary }} />
-                    </InputAdornment>
-                  ),
-                }}
-                sx={{
-                  '& .MuiOutlinedInput-root': {
-                    borderRadius: 2,
-                    '&:hover fieldset': {
-                      borderColor: COLORS.income.main,
-                    },
-                    '&.Mui-focused fieldset': {
-                      borderColor: COLORS.income.main,
-                    },
-                  },
-                }}
-              />
-              <TextField
-                margin="normal"
-                required
-                fullWidth
-                name="password"
-                label="Password"
-                type={showPassword ? 'text' : 'password'}
-                id="password"
-                autoComplete="current-password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                disabled={state.loading}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <Lock sx={{ color: COLORS.text.tertiary }} />
-                    </InputAdornment>
-                  ),
-                  endAdornment: (
-                    <InputAdornment position="end">
-                      <IconButton
-                        onClick={() => setShowPassword(!showPassword)}
-                        edge="end"
-                      >
-                        {showPassword ? <VisibilityOff /> : <Visibility />}
-                      </IconButton>
-                    </InputAdornment>
-                  ),
-                }}
-                sx={{
-                  '& .MuiOutlinedInput-root': {
-                    borderRadius: 2,
-                    '&:hover fieldset': {
-                      borderColor: COLORS.income.main,
-                    },
-                    '&.Mui-focused fieldset': {
-                      borderColor: COLORS.income.main,
-                    },
-                  },
-                }}
-              />
-              <Button
-                type="submit"
-                fullWidth
-                variant="contained"
-                sx={{ 
-                  mt: 4, 
-                  mb: 2,
-                  py: 1.5,
-                  borderRadius: 2,
-                  fontWeight: 600,
-                  fontSize: '1rem',
-                  textTransform: 'none',
-                  background: COLORS.gradients.income,
-                  boxShadow: BOX_SHADOWS.income,
-                  '&:hover': {
-                    background: COLORS.gradients.income,
-                    boxShadow: BOX_SHADOWS.incomeHover,
-                    transform: 'translateY(-2px)',
-                  },
-                  transition: 'all 0.3s ease',
-                }}
-                disabled={state.loading}
-              >
-                {state.loading ? <CircularProgress size={24} color="inherit" /> : 'Sign In'}
-              </Button>
-              <Box textAlign="center" mt={2}>
-                <Typography variant="body2" sx={{ color: COLORS.text.tertiary }}>
-                  Don't have an account?{' '}
-                  <Link 
-                    to="/register" 
-                    style={{ 
-                      textDecoration: 'none',
-                      color: COLORS.income.main,
-                      fontWeight: 600,
-                    }}
-                  >
-                    Sign Up
-                  </Link>
-                </Typography>
-              </Box>
-            </Box>
-          </Paper>
+          </Box>
+        </Box>
+      </Box>
     </Box>
   );
 };
 
 export default Login;
+

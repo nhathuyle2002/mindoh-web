@@ -2,8 +2,6 @@ import React from 'react';
 import {
   Box,
   Drawer,
-  AppBar,
-  Toolbar,
   List,
   Typography,
   ListItem,
@@ -12,7 +10,7 @@ import {
   ListItemText,
   Avatar,
   Button,
-  Stack,
+  Divider,
 } from '@mui/material';
 import {
   Assessment,
@@ -21,7 +19,6 @@ import {
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { COLORS } from '../constants/colors';
 
 const drawerWidth = 240;
 
@@ -42,63 +39,11 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
   const menuItems = [
     { text: 'Summary', icon: <Assessment />, path: '/summary' },
-    { text: 'Transactions', icon: <ListIcon />, path: '/dashboard' },
+    { text: 'Transactions', icon: <ListIcon />, path: '/transactions' },
   ];
 
   return (
     <Box sx={{ display: 'flex', minHeight: '100vh' }}>
-      {/* App Bar */}
-      <AppBar
-        position="fixed"
-        sx={{
-          width: `calc(100% - ${drawerWidth}px)`,
-          ml: `${drawerWidth}px`,
-          background: COLORS.gradients.primary,
-          color: COLORS.text.secondary,
-          boxShadow: '0 4px 20px 0 rgba(0,0,0,0.08)',
-          backdropFilter: 'blur(10px)',
-        }}
-      >
-        <Toolbar>
-          <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1, fontWeight: 700, letterSpacing: 0.5 }}>
-            {menuItems.find(item => item.path === location.pathname)?.text || 'Mindoh Finance'}
-          </Typography>
-          <Stack direction="row" spacing={2} alignItems="center">
-            <Avatar sx={{ 
-              bgcolor: '#81FBB8', 
-              width: 40, 
-              height: 40,
-              border: '2px solid #28C76F',
-              fontWeight: 600,
-              color: '#1a202c',
-            }}>
-              {state.user?.username?.[0]?.toUpperCase()}
-            </Avatar>
-            <Typography variant="body2" sx={{ display: { xs: 'none', sm: 'block' }, fontWeight: 600, color: '#2d3748' }}>
-              {state.user?.username}
-            </Typography>
-            <Button 
-              startIcon={<Logout />} 
-              onClick={handleLogout}
-              sx={{
-                bgcolor: '#ffffff',
-                color: '#2d3748',
-                borderRadius: 2,
-                px: 2,
-                fontWeight: 600,
-                boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-                '&:hover': {
-                  bgcolor: '#f7fafc',
-                  boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-                },
-              }}
-            >
-              Logout
-            </Button>
-          </Stack>
-        </Toolbar>
-      </AppBar>
-
       {/* Sidebar */}
       <Drawer
         sx={{
@@ -107,70 +52,117 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           '& .MuiDrawer-paper': {
             width: drawerWidth,
             boxSizing: 'border-box',
-            background: COLORS.gradients.sidebar,
-            color: COLORS.text.secondary,
-            borderRight: `1px solid ${COLORS.background.border}`,
-            boxShadow: '2px 0 12px rgba(0,0,0,0.08)',
+            background: '#ffffff',
+            borderRight: '1px solid #e9ecef',
+            boxShadow: '2px 0 16px rgba(0,0,0,0.06)',
+            display: 'flex',
+            flexDirection: 'column',
           },
         }}
         variant="permanent"
         anchor="left"
       >
-        <Box sx={{ 
-          p: 2.5, 
-          display: 'flex', 
-          alignItems: 'center', 
+        {/* Logo area — dark navy matching favicon */}
+        <Box sx={{
+          px: 2.5,
+          py: 2.5,
+          display: 'flex',
+          alignItems: 'center',
           gap: 1.5,
-          background: 'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)',
-          borderRadius: 2,
-          m: 2,
-          mb: 3,
-          boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+          background: 'linear-gradient(160deg, #1e2d50 0%, #090912 100%)',
         }}>
-          <Box component="img" src="/favicon.svg" alt="Mindoh logo" sx={{ width: 36, height: 36 }} />
-          <Typography variant="h5" sx={{ fontWeight: 800, color: '#2d3748', letterSpacing: 1 }}>
+          <Box component="img" src="/favicon.svg" alt="Mindoh logo" sx={{ width: 38, height: 38 }} />
+          <Typography variant="h5" sx={{ fontWeight: 800, color: '#a3ffcb', letterSpacing: 0.5 }}>
             Mindoh
           </Typography>
         </Box>
-        <List sx={{ px: 2 }}>
-          {menuItems.map((item) => (
-            <ListItem key={item.text} disablePadding sx={{ mb: 1 }}>
-              <ListItemButton
-                selected={location.pathname === item.path}
-                onClick={() => navigate(item.path)}
-                sx={{
-                  borderRadius: 3,
-                  transition: 'all 0.3s ease',
-                  color: '#4a5568',
-                  '&.Mui-selected': {
-                    background: 'linear-gradient(90deg, #81FBB8 0%, #28C76F 100%)',
-                    color: '#1a202c',
-                    fontWeight: 600,
-                    boxShadow: '0 4px 12px rgba(40, 199, 111, 0.25)',
+
+        {/* Nav items */}
+        <List sx={{ px: 1.5, pt: 2, flexGrow: 1 }}>
+          {menuItems.map((item) => {
+            const selected = location.pathname === item.path;
+            return (
+              <ListItem key={item.text} disablePadding sx={{ mb: 0.5 }}>
+                <ListItemButton
+                  selected={selected}
+                  onClick={() => navigate(item.path)}
+                  sx={{
+                    borderRadius: 2,
+                    pl: selected ? 1.5 : 2,
+                    borderLeft: selected ? '3px solid #28C76F' : '3px solid transparent',
+                    transition: 'all 0.2s ease',
+                    color: selected ? '#28C76F' : '#4a5568',
+                    bgcolor: selected ? 'rgba(40, 199, 111, 0.08)' : 'transparent',
                     '&:hover': {
-                      background: 'linear-gradient(90deg, #81FBB8 0%, #28C76F 100%)',
+                      bgcolor: 'rgba(40, 199, 111, 0.08)',
+                      color: '#28C76F',
+                      transform: 'translateX(2px)',
                     },
-                  },
-                  '&:hover': {
-                    bgcolor: 'rgba(129, 251, 184, 0.15)',
-                    transform: 'translateX(4px)',
-                  },
-                }}
-              >
-                <ListItemIcon sx={{ color: 'inherit', minWidth: 40 }}>
-                  {item.icon}
-                </ListItemIcon>
-                <ListItemText 
-                  primary={item.text} 
-                  primaryTypographyProps={{ 
-                    fontWeight: location.pathname === item.path ? 600 : 500,
-                    fontSize: '0.95rem',
+                    '&.Mui-selected': {
+                      bgcolor: 'rgba(40, 199, 111, 0.08)',
+                      '&:hover': { bgcolor: 'rgba(40, 199, 111, 0.12)' },
+                    },
                   }}
-                />
-              </ListItemButton>
-            </ListItem>
-          ))}
+                >
+                  <ListItemIcon sx={{ color: 'inherit', minWidth: 38 }}>
+                    {item.icon}
+                  </ListItemIcon>
+                  <ListItemText
+                    primary={item.text}
+                    primaryTypographyProps={{
+                      fontWeight: selected ? 600 : 500,
+                      fontSize: '0.925rem',
+                    }}
+                  />
+                </ListItemButton>
+              </ListItem>
+            );
+          })}
         </List>
+
+        {/* User section at bottom */}
+        <Divider />
+        <Box sx={{ p: 2 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1.5 }}>
+            <Avatar sx={{
+              bgcolor: '#28C76F',
+              width: 36,
+              height: 36,
+              fontSize: '0.875rem',
+              fontWeight: 700,
+              color: '#fff',
+            }}>
+              {state.user?.username?.[0]?.toUpperCase()}
+            </Avatar>
+            <Box sx={{ overflow: 'hidden' }}>
+              <Typography variant="body2" fontWeight={600} noWrap sx={{ color: '#1a202c' }}>
+                {state.user?.username}
+              </Typography>
+              <Typography variant="caption" sx={{ color: '#718096' }}>
+                Personal
+              </Typography>
+            </Box>
+          </Box>
+          <Button
+            fullWidth
+            startIcon={<Logout sx={{ fontSize: 16 }} />}
+            onClick={handleLogout}
+            size="small"
+            sx={{
+              justifyContent: 'flex-start',
+              color: '#718096',
+              borderRadius: 2,
+              px: 1.5,
+              fontWeight: 500,
+              '&:hover': {
+                bgcolor: 'rgba(234, 84, 85, 0.08)',
+                color: '#EA5455',
+              },
+            }}
+          >
+            Sign out
+          </Button>
+        </Box>
       </Drawer>
 
       {/* Main Content */}
@@ -178,9 +170,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         component="main"
         sx={{
           flexGrow: 1,
-          background: '#f8f9fa',
+          background: '#f4f6f9',
           minHeight: '100vh',
-          pt: 8,
         }}
       >
         {children}

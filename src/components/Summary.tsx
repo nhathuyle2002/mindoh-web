@@ -8,7 +8,7 @@ import {
   CardContent,
   CircularProgress,
   Alert,
-  Collapse,
+  Popover,
   Button,
   Avatar,
   Table,
@@ -39,7 +39,7 @@ const Summary: React.FC = () => {
   const [baseCurrency, setBaseCurrency] = useState<string>('VND');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [showFilters, setShowFilters] = useState(false);
+  const [filterAnchorEl, setFilterAnchorEl] = useState<HTMLElement | null>(null);
   const [availableTypes, setAvailableTypes] = useState<string[]>([]);
   const [availableCurrencies, setAvailableCurrencies] = useState<string[]>(['VND', 'USD']);
 
@@ -113,7 +113,7 @@ const Summary: React.FC = () => {
       cleanFilters.to = format(endOfDay, DATETIME_WITH_TIMEZONE_FORMAT);
     }
     fetchSummary(cleanFilters);
-    setShowFilters(false);
+    setFilterAnchorEl(null);
   };
 
   const handleClearFilters = () => {
@@ -246,6 +246,7 @@ const Summary: React.FC = () => {
                 color: 'white',
                 borderRadius: 4,
                 boxShadow: BOX_SHADOWS.income,
+                border: '1px solid rgba(255,255,255,0.35)',
                 transition: 'transform 0.3s ease, box-shadow 0.3s ease',
                 '&:hover': {
                   transform: 'translateY(-8px)',
@@ -276,6 +277,7 @@ const Summary: React.FC = () => {
                 color: 'white',
                 borderRadius: 4,
                 boxShadow: BOX_SHADOWS.expense,
+                border: '1px solid rgba(255,255,255,0.35)',
                 transition: 'transform 0.3s ease, box-shadow 0.3s ease',
                 '&:hover': {
                   transform: 'translateY(-8px)',
@@ -349,6 +351,7 @@ const Summary: React.FC = () => {
                 color: COLORS.text.primary,
                 borderRadius: 3,
                 boxShadow: BOX_SHADOWS.income,
+                border: '1px solid rgba(255,255,255,0.25)',
                 transition: 'transform 0.3s ease, box-shadow 0.3s ease',
                 '&:hover': {
                   transform: 'translateY(-5px)',
@@ -399,6 +402,7 @@ const Summary: React.FC = () => {
                 color: COLORS.text.primary,
                 borderRadius: 3,
                 boxShadow: BOX_SHADOWS.expense,
+                border: '1px solid rgba(255,255,255,0.25)',
                 transition: 'transform 0.3s ease, box-shadow 0.3s ease',
                 '&:hover': {
                   transform: 'translateY(-5px)',
@@ -505,7 +509,7 @@ const Summary: React.FC = () => {
           <Button 
             variant="outlined"
             startIcon={<FilterList />} 
-            onClick={() => setShowFilters(!showFilters)}
+            onClick={(e) => setFilterAnchorEl(filterAnchorEl ? null : e.currentTarget)}
             size="small"
             sx={{
               borderRadius: 2,
@@ -523,7 +527,14 @@ const Summary: React.FC = () => {
           </Button>
         </Box>
 
-        <Collapse in={showFilters}>
+        <Popover
+          open={Boolean(filterAnchorEl)}
+          anchorEl={filterAnchorEl}
+          onClose={() => setFilterAnchorEl(null)}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+          transformOrigin={{ vertical: 'top', horizontal: 'left' }}
+          PaperProps={{ sx: { mt: 1, width: 720, maxWidth: '95vw', borderRadius: 2, boxShadow: '0 8px 32px rgba(0,0,0,0.15)' } }}
+        >
           <FilterSection
             filters={filters}
             fromDate={fromDate}
@@ -531,12 +542,12 @@ const Summary: React.FC = () => {
             availableTypes={availableTypes}
             availableCurrencies={availableCurrencies}
             onFilterChange={handleFilterChange}
-            onApplyFilters={handleApplyFilters}
+            onApplyFilters={() => { handleApplyFilters(); setFilterAnchorEl(null); }}
             onClearFilters={handleClearFilters}
-            onClose={() => setShowFilters(false)}
+            onClose={() => setFilterAnchorEl(null)}
             hasActiveFilters={hasActiveFilters}
           />
-        </Collapse>
+        </Popover>
 
         {/* Summary by Type - Pie Charts */}
         {summary && summary.expenses && summary.expenses.length > 0 && (
