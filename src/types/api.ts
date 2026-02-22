@@ -48,7 +48,7 @@ export interface ExpenseRequest {
   kind: ExpenseKind;
   type: string;
   resource?: ExpenseResource;
-  description: string;
+  description?: string;
   date: string;
 }
 

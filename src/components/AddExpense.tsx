@@ -17,6 +17,7 @@ import { LocalizationProvider, DatePicker } from '@mui/x-date-pickers';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { expenseService } from '../services/expenseService';
 import type { ExpenseRequest, Expense } from '../types/api';
+import { useAuth } from '../contexts/AuthContext';
 import { CURRENCIES } from '../constants/currencies';
 import { EXPENSE_KINDS, EXPENSE_RESOURCES } from '../constants/expense';
 import { COLORS, BOX_SHADOWS } from '../constants/colors';
@@ -29,22 +30,11 @@ interface AddExpenseProps {
 }
 
 const AddExpense: React.FC<AddExpenseProps> = ({ expense, onExpenseAdded, onClose }) => {
-  // Get user from localStorage
-  const getUserId = () => {
-    try {
-      const user = localStorage.getItem('user');
-      if (user) {
-        const parsed = JSON.parse(user);
-        return parsed.id || 0;
-      }
-    } catch {
-      // ignore
-    }
-    return 0;
-  };
+  const { state } = useAuth();
+  const userId = state.user?.id || 0;
 
   const [formData, setFormData] = useState<ExpenseRequest>({
-    user_id: getUserId(),
+    user_id: userId,
     amount: expense?.amount || 0,
     description: expense?.description || '',
     kind: expense?.kind || 'expense',
@@ -73,7 +63,7 @@ const AddExpense: React.FC<AddExpenseProps> = ({ expense, onExpenseAdded, onClos
       });
     } else {
       setFormData({
-        user_id: getUserId(),
+        user_id: userId,
         amount: 0,
         description: '',
         kind: 'expense',
@@ -87,7 +77,6 @@ const AddExpense: React.FC<AddExpenseProps> = ({ expense, onExpenseAdded, onClos
 
   // Update user_id if localStorage changes (e.g., login/logout)
   useEffect(() => {
-    setFormData(prev => ({ ...prev, user_id: getUserId() }));
     // Fetch available types
     expenseService.getUniqueTypes().then(types => setAvailableTypes(types)).catch(() => {});
     // eslint-disable-next-line
@@ -116,8 +105,8 @@ const AddExpense: React.FC<AddExpenseProps> = ({ expense, onExpenseAdded, onClos
       const expenseData = { 
         ...formData,
         amount: amount,
-        user_id: getUserId(), 
-        type: formData.type.trim(),
+        user_id: userId,
+        type: formData.type.trim().toLowerCase(),
         date: dateStr
       };
 
@@ -131,7 +120,7 @@ const AddExpense: React.FC<AddExpenseProps> = ({ expense, onExpenseAdded, onClos
       
       setSuccess(true);
       setFormData({
-        user_id: getUserId(),
+        user_id: userId,
         amount: 0,
         description: '',
         kind: 'expense',
@@ -296,7 +285,6 @@ const AddExpense: React.FC<AddExpenseProps> = ({ expense, onExpenseAdded, onClos
               label="Description"
               value={formData.description}
               onChange={(e) => handleChange('description', e.target.value)}
-              required
               multiline
               rows={3}
               disabled={loading}
