@@ -17,6 +17,7 @@ const Register: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [name, setName] = useState('');
   const [validationError, setValidationError] = useState('');
   const { state, register, clearError } = useAuth();
   const navigate = useNavigate();
@@ -48,7 +49,7 @@ useEffect(() => {
     }
 
     if (username && email && password) {
-      const success = await register(username, email, password);
+      const success = await register(username, email, password, name || undefined);
       if (success) {
         navigate('/login');
       }
@@ -91,6 +92,17 @@ useEffect(() => {
               autoFocus
               value={username}
               onChange={(e) => setUsername(e.target.value)}
+              disabled={state.loading}
+            />
+            <TextField
+              margin="normal"
+              fullWidth
+              id="name"
+              label="Name (optional)"
+              name="name"
+              autoComplete="name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
               disabled={state.loading}
             />
             <TextField

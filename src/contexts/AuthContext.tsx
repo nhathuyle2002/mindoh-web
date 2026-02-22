@@ -15,6 +15,7 @@ type AuthAction =
   | { type: 'AUTH_SUCCESS'; payload: { user: User; token: string } }
   | { type: 'AUTH_FAILURE'; payload: string }
   | { type: 'AUTH_REGISTER_SUCCESS' }
+  | { type: 'UPDATE_USER'; payload: User }
   | { type: 'LOGOUT' }
   | { type: 'CLEAR_ERROR' };
 
@@ -43,6 +44,8 @@ const authReducer = (state: AuthState, action: AuthAction): AuthState => {
         loading: false,
         error: null,
       };
+    case 'UPDATE_USER':
+      return { ...state, user: action.payload, loading: false, error: null };
     case 'AUTH_FAILURE':
       return {
         ...state,
@@ -69,7 +72,8 @@ interface AuthContextType {
   state: AuthState;
   dispatch: React.Dispatch<AuthAction>;
   login: (username: string, password: string) => Promise<void>;
-  register: (username: string, email: string, password: string) => Promise<boolean>;
+  register: (username: string, email: string, password: string, name?: string) => Promise<boolean>;
+  updateUser: (fields: Partial<User>) => Promise<boolean>;
   logout: () => void;
   clearError: () => void;
 }
@@ -124,19 +128,33 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   // Register does not log in, just stores user and redirects to login
-  const register = async (username: string, email: string, password: string): Promise<boolean> => {
+  const register = async (username: string, email: string, password: string, name?: string): Promise<boolean> => {
     try {
       dispatch({ type: 'AUTH_START' });
-      await authService.register({ username, email, password });
-      // Do not store user locally as they need to login
-      dispatch({
-        type: 'AUTH_REGISTER_SUCCESS',
-      });
+      await authService.register({ username, email, password, name });
+      dispatch({ type: 'AUTH_REGISTER_SUCCESS' });
       return true;
     } catch (error: any) {
       dispatch({
         type: 'AUTH_FAILURE',
         payload: error.response?.data?.message || 'Registration failed'
+      });
+      return false;
+    }
+  };
+
+  const updateUser = async (fields: Partial<User>): Promise<boolean> => {
+    if (!state.user) return false;
+    try {
+      dispatch({ type: 'AUTH_START' });
+      const updated = await authService.updateUser(state.user.id, fields);
+      localStorage.setItem('user', JSON.stringify(updated));
+      dispatch({ type: 'UPDATE_USER', payload: updated });
+      return true;
+    } catch (error: any) {
+      dispatch({
+        type: 'AUTH_FAILURE',
+        payload: error.response?.data?.error || 'Update failed',
       });
       return false;
     }
@@ -156,6 +174,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     dispatch,
     login,
     register,
+    updateUser,
     logout,
     clearError,
   };

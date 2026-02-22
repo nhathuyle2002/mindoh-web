@@ -7,6 +7,7 @@ import Dashboard from './components/Dashboard';
 import Summary from './components/Summary';
 import Layout from './components/Layout';
 import AddExpense from './components/AddExpense';
+import Settings from './components/Settings';
 import ProtectedRoute from './components/ProtectedRoute';
 
 const theme = createTheme({
@@ -73,6 +74,16 @@ function App() {
               element={
                 <ProtectedRoute>
                   <AddExpense />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/settings"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <Settings />
+                  </Layout>
                 </ProtectedRoute>
               }
             />

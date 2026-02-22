@@ -3,8 +3,12 @@ export interface User {
   id: number;
   username: string;
   email: string;
+  name?: string;
+  phone?: string;
+  address?: string;
+  birthdate?: string;
+  role?: string;
   created_at: string;
-  updated_at: string;
 }
 
 export interface LoginRequest {
@@ -16,6 +20,7 @@ export interface RegisterRequest {
   username: string;
   email: string;
   password: string;
+  name?: string;
 }
 
 export interface LoginResponse {

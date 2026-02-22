@@ -16,6 +16,7 @@ import {
   Assessment,
   List as ListIcon,
   Logout,
+  Settings as SettingsIcon,
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -134,14 +135,21 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             }}>
               {state.user?.username?.[0]?.toUpperCase()}
             </Avatar>
-            <Box sx={{ overflow: 'hidden' }}>
+            <Box sx={{ overflow: 'hidden', flexGrow: 1 }}>
               <Typography variant="body2" fontWeight={600} noWrap sx={{ color: '#1a202c' }}>
-                {state.user?.username}
+                {state.user?.name || state.user?.username}
               </Typography>
               <Typography variant="caption" sx={{ color: '#718096' }}>
-                Personal
+                @{state.user?.username}
               </Typography>
             </Box>
+            <Button
+              onClick={() => navigate('/settings')}
+              size="small"
+              sx={{ minWidth: 0, p: 0.5, color: '#718096', '&:hover': { color: '#28C76F', bgcolor: 'transparent' } }}
+            >
+              <SettingsIcon sx={{ fontSize: 18 }} />
+            </Button>
           </Box>
           <Button
             fullWidth
