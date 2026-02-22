@@ -52,21 +52,6 @@ export interface ExpenseRequest {
   date: string;
 }
 
-export interface ExpenseFilter {
-  user_id?: number;
-  kind?: string;
-  type?: string;
-  from?: string;
-  to?: string;
-}
-
-export interface ExpenseSummary {
-  expenses: Expense[];
-  total_by_kind: Record<ExpenseKind, number>;
-  total_by_type: Record<string, number>;
-  total_amount: number;
-}
-
 export interface ApiError {
   message: string;
   error?: string;
