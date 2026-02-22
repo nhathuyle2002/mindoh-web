@@ -15,6 +15,7 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  TablePagination,
   ToggleButton,
   ToggleButtonGroup,
   Select,
@@ -24,7 +25,7 @@ import {
   Switch,
   FormControlLabel,
 } from '@mui/material';
-import { format, startOfMonth, endOfMonth, subMonths, subDays } from 'date-fns';
+import { format } from 'date-fns';
 import { 
   TrendingUp, 
   TrendingDown, 
@@ -39,8 +40,10 @@ import { PieChart } from '@mui/x-charts/PieChart';
 import { LineChart } from '@mui/x-charts/LineChart';
 import { CURRENCY_SYMBOLS } from '../constants/currencies';
 import { COLORS, BOX_SHADOWS } from '../constants/colors';
-
-type DatePreset = 'all' | 'last_7d' | 'this_month' | 'last_3m' | 'last_6m' | 'last_12m' | 'custom';
+import DatePresetBar from '../common/DatePresetBar';
+import { type DatePreset, getPresetDates } from '../common/utils/datePresets';
+import { formatCurrency } from '../common/utils/formatCurrency';
+import { useTableSort } from '../common/hooks/useTableSort';
 
 const Summary: React.FC = () => {
   const [summary, setSummary] = useState<ExpenseSummaryType | null>(null);
@@ -77,10 +80,32 @@ const Summary: React.FC = () => {
     try {
       const result = await expenseService.getGroups(filterParams);
       setGroups(result.groups);
+      setGroupTotal(result.total);
     } catch {
       setGroups([]);
+      setGroupTotal(0);
     }
   };
+
+  // Groups table — server-side sort & pagination
+  const { sortCol: groupOrderBy, sortDir: groupOrderDir, sortBy: groupSortBy, SortIcon: GroupSortIcon } =
+    useTableSort<'period' | 'income' | 'expense' | 'balance'>({ col: 'period', dir: 'desc' });
+  const [groupPage, setGroupPage] = useState(0);       // 0-based for TablePagination
+  const [groupPageSize, setGroupPageSize] = useState(12);
+  const [groupTotal, setGroupTotal] = useState(0);
+
+  const buildGroupsFilter = (
+    from: Date | null, to: Date | null, currency: string, gb: string,
+    orderBy: string | null, orderDir: string | null, page: number, pageSize: number,
+  ): GroupsFilter => ({
+    group_by: gb,
+    original_currency: currency,
+    from: from ? format(from, 'yyyy-MM-dd') : undefined,
+    to: to ? format(to, 'yyyy-MM-dd') : undefined,
+    ...(orderBy ? { order_by: orderBy as GroupsFilter['order_by'], order_dir: (orderDir ?? 'desc') as 'asc' | 'desc' } : {}),
+    page: page + 1,
+    page_size: pageSize,
+  });
 
   const buildAndFetch = (params: { from?: Date | null; to?: Date | null; currency?: string; group_by?: string }) => {
     const cleanFilters: SummaryFilter = {};
@@ -89,27 +114,30 @@ const Summary: React.FC = () => {
     if (params.to) cleanFilters.to = format(params.to, 'yyyy-MM-dd');
     fetchSummary(cleanFilters);
     if (params.group_by) {
-      const gf: GroupsFilter = {
-        group_by: params.group_by,
-        original_currency: params.currency,
-        from: params.from ? format(params.from, 'yyyy-MM-dd') : undefined,
-        to: params.to ? format(params.to, 'yyyy-MM-dd') : undefined,
-      };
-      fetchGroups(gf);
+      setGroupPage(0);
+      fetchGroups(buildGroupsFilter(
+        params.from ?? null, params.to ?? null, params.currency ?? '',
+        params.group_by, groupOrderBy, groupOrderDir, 0, groupPageSize,
+      ));
     }
   };
 
-  const getPresetDates = (preset: DatePreset): { from: Date; to: Date } | null => {
-    const now = new Date();
-    switch (preset) {
-      case 'all':      return null;
-      case 'last_7d':  return { from: subDays(now, 6), to: now };
-      case 'this_month': return { from: startOfMonth(now), to: endOfMonth(now) };
-      case 'last_3m':  return { from: startOfMonth(subMonths(now, 2)), to: endOfMonth(now) };
-      case 'last_6m':  return { from: startOfMonth(subMonths(now, 5)), to: endOfMonth(now) };
-      case 'last_12m': return { from: startOfMonth(subMonths(now, 11)), to: endOfMonth(now) };
-      default:         return null;
-    }
+  const handleGroupSort = (col: 'period' | 'income' | 'expense' | 'balance') => {
+    const { sortCol: newOrderBy, sortDir: newOrderDir } = groupSortBy(col);
+    setGroupPage(0);
+    fetchGroups(buildGroupsFilter(fromDate, toDate, originalCurrency, groupBy, newOrderBy, newOrderDir, 0, groupPageSize));
+  };
+
+  const handleGroupPageChange = (_: unknown, newPage: number) => {
+    setGroupPage(newPage);
+    fetchGroups(buildGroupsFilter(fromDate, toDate, originalCurrency, groupBy, groupOrderBy, groupOrderDir, newPage, groupPageSize));
+  };
+
+  const handleGroupRowsPerPageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newSize = parseInt(e.target.value, 10);
+    setGroupPageSize(newSize);
+    setGroupPage(0);
+    fetchGroups(buildGroupsFilter(fromDate, toDate, originalCurrency, groupBy, groupOrderBy, groupOrderDir, 0, newSize));
   };
 
   const defaultGroupByForPreset = (preset: DatePreset): 'DAY' | 'WEEK' | 'MONTH' => {
@@ -123,16 +151,15 @@ const Summary: React.FC = () => {
   };
 
   useEffect(() => {
-    buildAndFetch({ from: null, to: null, currency: originalCurrency, group_by: 'MONTH' });
+    buildAndFetch({ from: null, to: null, currency: originalCurrency, group_by: groupBy });
     expenseService.getAvailableCurrencies().then(currencies => setAvailableCurrencies(currencies)).catch(() => {});
     expenseService.getExchangeRates().then(({ base_currency, rates }) => { setBaseCurrency(base_currency); setExchangeRates(rates); }).catch(() => {});
     // eslint-disable-next-line
   }, []);
 
-  const handlePresetChange = (_: React.MouseEvent<HTMLElement>, preset: DatePreset | null) => {
-    if (!preset) return;
-    setDatePreset(preset);
+  const handlePresetChange = (preset: DatePreset) => {
     const newGroupBy = defaultGroupByForPreset(preset);
+    setDatePreset(preset);
     setGroupBy(newGroupBy);
     if (preset === 'all') {
       setFromDate(null);
@@ -169,16 +196,6 @@ const Summary: React.FC = () => {
     if (!val) return;
     setGroupBy(val);
     buildAndFetch({ from: fromDate, to: toDate, currency: originalCurrency, group_by: val });
-  };
-
-  const formatCurrency = (amount: number, currency: string) => {
-    const decimals = currency === 'VND' ? 0 : 2;
-    const formatted = new Intl.NumberFormat('en-US', {
-      minimumFractionDigits: decimals,
-      maximumFractionDigits: decimals,
-    }).format(amount);
-    const symbol = CURRENCY_SYMBOLS[currency] || currency;
-    return `${formatted} ${symbol}`;
   };
 
   const calculateTotals = () => {
@@ -239,27 +256,7 @@ const Summary: React.FC = () => {
             <Box display="flex" flexDirection={{ xs: 'column', md: 'row' }} justifyContent="space-between" alignItems="flex-start" gap={2}>
               {/* Date presets + custom range */}
               <Box display="flex" flexDirection="column" gap={1.5} width={{ xs: '100%', md: 'auto' }}>
-                <ToggleButtonGroup
-                  value={datePreset}
-                  exclusive
-                  onChange={handlePresetChange}
-                  size="small"
-                  sx={{ flexWrap: 'wrap', gap: 0.5 }}
-                >
-                  {([
-                    ['all',        'All'],
-                    ['last_7d',    'Last 7d'],
-                    ['this_month', 'This Month'],
-                    ['last_3m',   'Last 3M'],
-                    ['last_6m',   'Last 6M'],
-                    ['last_12m',  'Last 12M'],
-                    ['custom',     'Custom'],
-                  ] as const).map(([v, label]) => (
-                    <ToggleButton key={v} value={v} sx={{ minWidth: { xs: 70, md: 90 }, fontSize: { xs: '0.72rem', md: '0.8125rem' }, px: { xs: 1, md: 1.5 } }}>
-                      {label}
-                    </ToggleButton>
-                  ))}
-                </ToggleButtonGroup>
+                <DatePresetBar value={datePreset} onChange={handlePresetChange} />
                 <Box display="flex" gap={1} alignItems="center" flexWrap="wrap">
                   <DatePicker
                     label="From"
@@ -586,19 +583,27 @@ const Summary: React.FC = () => {
                             <TableRow>
                               <TableCell sx={{ fontWeight: 'bold', color: COLORS.text.primary }}>Type</TableCell>
                               <TableCell align="right" sx={{ fontWeight: 'bold', color: COLORS.text.primary }}>Amount</TableCell>
+                              <TableCell align="right" sx={{ fontWeight: 'bold', color: COLORS.text.primary }}>%</TableCell>
                             </TableRow>
                           </TableHead>
                           <TableBody>
                             {Object.entries(summary.total_by_type_income)
                               .sort(([, a], [, b]) => b - a)
-                              .map(([type, amount]) => (
+                              .map(([type, amount]) => {
+                                const total = Object.values(summary.total_by_type_income).reduce((s, v) => s + v, 0);
+                                const pct = total > 0 ? (amount / total * 100).toFixed(1) : '0.0';
+                                return (
                                 <TableRow key={type} sx={{ '&:hover': { bgcolor: COLORS.background.hover } }}>
                                   <TableCell sx={{ color: COLORS.text.secondary, fontWeight: 500 }}>{type}</TableCell>
                                   <TableCell align="right" sx={{ color: COLORS.income.main, fontWeight: 600 }}>
                                     {formatCurrency(amount, summary.currency)}
                                   </TableCell>
+                                  <TableCell align="right" sx={{ color: COLORS.text.tertiary, fontWeight: 500, fontSize: '0.8rem' }}>
+                                    {pct}%
+                                  </TableCell>
                                 </TableRow>
-                              ))}
+                                );
+                              })}
                           </TableBody>
                         </Table>
                       </TableContainer>
@@ -631,19 +636,27 @@ const Summary: React.FC = () => {
                             <TableRow>
                               <TableCell sx={{ fontWeight: 'bold', color: COLORS.text.primary }}>Type</TableCell>
                               <TableCell align="right" sx={{ fontWeight: 'bold', color: COLORS.text.primary }}>Amount</TableCell>
+                              <TableCell align="right" sx={{ fontWeight: 'bold', color: COLORS.text.primary }}>%</TableCell>
                             </TableRow>
                           </TableHead>
                           <TableBody>
                             {Object.entries(summary.total_by_type_expense)
                               .sort(([, a], [, b]) => Math.abs(b) - Math.abs(a))
-                              .map(([type, amount]) => (
+                              .map(([type, amount]) => {
+                                const total = Object.values(summary.total_by_type_expense).reduce((s, v) => s + Math.abs(v), 0);
+                                const pct = total > 0 ? (Math.abs(amount) / total * 100).toFixed(1) : '0.0';
+                                return (
                                 <TableRow key={type} sx={{ '&:hover': { bgcolor: COLORS.background.hover } }}>
                                   <TableCell sx={{ color: COLORS.text.secondary, fontWeight: 500 }}>{type}</TableCell>
                                   <TableCell align="right" sx={{ color: COLORS.expense.main, fontWeight: 600 }}>
                                     {formatCurrency(Math.abs(amount), summary.currency)}
                                   </TableCell>
+                                  <TableCell align="right" sx={{ color: COLORS.text.tertiary, fontWeight: 500, fontSize: '0.8rem' }}>
+                                    {pct}%
+                                  </TableCell>
                                 </TableRow>
-                              ))}
+                                );
+                              })}
                           </TableBody>
                         </Table>
                       </TableContainer>
@@ -684,10 +697,18 @@ const Summary: React.FC = () => {
               <Table sx={{ minWidth: 560 }}>
                 <TableHead>
                   <TableRow sx={{ bgcolor: COLORS.gradients.primary }}>
-                    <TableCell sx={{ fontWeight: 'bold', color: COLORS.text.primary }}>Period</TableCell>
-                    <TableCell align="right" sx={{ fontWeight: 'bold', color: COLORS.text.primary }}>Income</TableCell>
-                    <TableCell align="right" sx={{ fontWeight: 'bold', color: COLORS.text.primary }}>Expense</TableCell>
-                    <TableCell align="right" sx={{ fontWeight: 'bold', color: COLORS.text.primary }}>Balance</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', color: COLORS.text.primary, cursor: 'pointer', userSelect: 'none' }} onClick={() => handleGroupSort('period')}>
+                      Period <GroupSortIcon col="period" />
+                    </TableCell>
+                    <TableCell align="right" sx={{ fontWeight: 'bold', color: COLORS.text.primary, cursor: 'pointer', userSelect: 'none' }} onClick={() => handleGroupSort('income')}>
+                      Income <GroupSortIcon col="income" />
+                    </TableCell>
+                    <TableCell align="right" sx={{ fontWeight: 'bold', color: COLORS.text.primary, cursor: 'pointer', userSelect: 'none' }} onClick={() => handleGroupSort('expense')}>
+                      Expense <GroupSortIcon col="expense" />
+                    </TableCell>
+                    <TableCell align="right" sx={{ fontWeight: 'bold', color: COLORS.text.primary, cursor: 'pointer', userSelect: 'none' }} onClick={() => handleGroupSort('balance')}>
+                      Balance <GroupSortIcon col="balance" />
+                    </TableCell>
                     <TableCell sx={{ fontWeight: 'bold', color: COLORS.text.primary }}>Types</TableCell>
                   </TableRow>
                 </TableHead>
@@ -724,6 +745,16 @@ const Summary: React.FC = () => {
                 </TableBody>
               </Table>
             </TableContainer>
+            <TablePagination
+              component="div"
+              count={groupTotal}
+              page={groupPage}
+              rowsPerPage={groupPageSize}
+              rowsPerPageOptions={[6, 12, 24, 52]}
+              onPageChange={handleGroupPageChange}
+              onRowsPerPageChange={handleGroupRowsPerPageChange}
+              sx={{ borderTop: '1px solid rgba(0,0,0,0.08)' }}
+            />
           </Box>
         )}
       </Container>

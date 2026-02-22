@@ -42,6 +42,8 @@ export type GroupsFilter = {
   from?: string;
   to?: string;
   group_by: string;  // DAY, WEEK, MONTH, YEAR
+  order_by?: 'period' | 'income' | 'expense' | 'balance';
+  order_dir?: 'asc' | 'desc';
   page?: number;
   page_size?: number;
 };

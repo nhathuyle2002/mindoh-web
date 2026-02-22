@@ -24,15 +24,19 @@ import {
   Tooltip,
   Container,
 } from '@mui/material';
-import { Add, Edit, Delete, WarningAmber, ArrowUpward, ArrowDownward, UnfoldMore } from '@mui/icons-material';
+import { Add, Edit, Delete, WarningAmber } from '@mui/icons-material';
+import { format } from 'date-fns';
 import { expenseService } from '../services/expenseService';
 import type { ExpenseFilter } from '../services/expenseService';
 import type { Expense } from '../types/api';
 import AddExpense from './AddExpense';
-import { CURRENCY_SYMBOLS } from '../constants/currencies';
 import { COLORS } from '../constants/colors';
 import FilterSection from '../common/FilterSection';
+import DatePresetBar from '../common/DatePresetBar';
+import { type DatePreset, getPresetDates } from '../common/utils/datePresets';
+import { formatCurrency } from '../common/utils/formatCurrency';
 import { formatDateForDisplay, formatDateToYYYYMMDD } from '../common/utils/dateUtils';
+import { useTableSort } from '../common/hooks/useTableSort';
 import type { SummaryFilter } from '../services/expenseService';
 
 const Transactions: React.FC = () => {
@@ -51,9 +55,11 @@ const Transactions: React.FC = () => {
   const [availableCurrencies, setAvailableCurrencies] = useState<string[]>(['VND', 'USD']);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
 
+  // Date preset
+  const [datePreset, setDatePreset] = useState<DatePreset>('all');
+
   // Sort state: null = no custom sort (uses default date desc)
-  const [sortCol, setSortCol] = useState<string | null>(null);
-  const [sortDir, setSortDir] = useState<'asc' | 'desc' | null>(null);
+  const { sortCol, sortDir, sortBy, SortIcon } = useTableSort<string>();
 
   // Filter states
   const [filters, setFilters] = useState<ExpenseFilter>({
@@ -177,6 +183,24 @@ const Transactions: React.FC = () => {
     fetchAll(clean, sortCol, sortDir, 0, rowsPerPage);
   };
 
+  const handlePresetChange = (preset: DatePreset) => {
+    setDatePreset(preset);
+    if (preset === 'custom') return; // let user pick dates manually then Apply
+    const dates = preset === 'all' ? null : getPresetDates(preset);
+    const newFrom = dates?.from ?? null;
+    const newTo = dates?.to ?? null;
+    setFromDate(newFrom);
+    setToDate(newTo);
+    setPage(0);
+    const f: ExpenseFilter = {};
+    if (filters.kind) f.kind = filters.kind;
+    if (filters.types?.length) f.types = filters.types;
+    if (filters.currencies?.length) f.currencies = filters.currencies;
+    if (newFrom) f.from = format(newFrom, 'yyyy-MM-dd');
+    if (newTo) f.to = format(newTo, 'yyyy-MM-dd');
+    fetchAll(f, sortCol, sortDir, 0, rowsPerPage);
+  };
+
   const handleClearFilters = () => {
     setFilters({ kind: undefined, types: undefined, currencies: undefined, from: undefined, to: undefined });
     setFromDate(null);
@@ -187,26 +211,10 @@ const Transactions: React.FC = () => {
 
   // 3-state sort: first click → desc, second → asc, third → remove
   const handleSort = (col: string) => {
-    let newCol: string | null;
-    let newDir: 'asc' | 'desc' | null;
-    if (sortCol !== col) {
-      newCol = col; newDir = 'desc';
-    } else if (sortDir === 'desc') {
-      newCol = col; newDir = 'asc';
-    } else {
-      newCol = null; newDir = null;
-    }
-    setSortCol(newCol);
-    setSortDir(newDir);
+    const { sortCol: newCol, sortDir: newDir } = sortBy(col);
     setPage(0);
     // Sort doesn't change which records match — only rows need refresh
     fetchRows(buildCleanFilters(), newCol, newDir, 0, rowsPerPage);
-  };
-
-  const SortIcon = ({ col }: { col: string }) => {
-    if (sortCol !== col) return <UnfoldMore fontSize="small" sx={{ opacity: 0.3, ml: 0.5, verticalAlign: 'middle' }} />;
-    if (sortDir === 'desc') return <ArrowDownward fontSize="small" sx={{ ml: 0.5, verticalAlign: 'middle', color: 'primary.main' }} />;
-    return <ArrowUpward fontSize="small" sx={{ ml: 0.5, verticalAlign: 'middle', color: 'primary.main' }} />;
   };
 
   const handleDeleteExpense = async (id: number) => {
@@ -246,23 +254,7 @@ const Transactions: React.FC = () => {
     fetchRows(buildCleanFilters(), sortCol, sortDir, 0, newRpp);
   };
 
-  const formatCurrency = (amount: number, currency: string) => {
-    const decimals = currency === 'VND' ? 0 : 2;
-    const formatted = new Intl.NumberFormat('en-US', {
-      minimumFractionDigits: decimals,
-      maximumFractionDigits: decimals,
-    }).format(amount);
-    const symbol = CURRENCY_SYMBOLS[currency] || currency;
-    return `${formatted} ${symbol}`;
-  };
-
-  const formatDate = (dateString: string) => {
-    return formatDateForDisplay(dateString);
-  };
-
-  if (loading && !expenses.length) {
-    // show skeleton inline in table instead of full-page spinner
-  }
+  const formatDate = (dateString: string) => formatDateForDisplay(dateString);
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', bgcolor: COLORS.background.main }}>
@@ -311,10 +303,11 @@ const Transactions: React.FC = () => {
         <Alert severity="error" sx={{ mb: 3 }} variant="filled">{error}</Alert>
       )}
 
-      {/* Summary Section removed - use the Summary page for totals */}
-
-      {/* Filter Section - always visible, above stats */}
+      {/* Filter bar */}
       <Paper sx={{ mb: 2, borderRadius: 3, boxShadow: '0 2px 12px rgba(0,0,0,0.07)', border: '1px solid', borderColor: 'divider' }} elevation={0}>
+        <Box sx={{ px: 2.5, pt: 2, pb: 1 }}>
+          <DatePresetBar value={datePreset} onChange={handlePresetChange} />
+        </Box>
         <FilterSection
           filters={filters}
           fromDate={fromDate}
@@ -335,18 +328,16 @@ const Transactions: React.FC = () => {
       {!loading && Object.keys(byCurrency).length > 0 && (
         <Box display="flex" flexWrap="wrap" gap={1} mb={2}>
           {Object.entries(byCurrency).map(([cur, cs]) => {
-            const symbol = CURRENCY_SYMBOLS[cur] || cur;
-            const fmt = (v: number) => new Intl.NumberFormat('en-US', { maximumFractionDigits: cur === 'VND' ? 0 : 2 }).format(Math.abs(v));
             const positive = cs.total_balance >= 0;
             return (
               <Box key={cur} sx={{ display: 'flex', alignItems: 'center', gap: 1, px: 1.5, py: 0.5, borderRadius: 2, bgcolor: 'background.paper', border: '1px solid', borderColor: 'divider' }}>
                 <Typography variant="caption" sx={{ fontWeight: 700, color: COLORS.text.tertiary, textTransform: 'uppercase', letterSpacing: '0.04em', mr: 0.5 }}>{cur}</Typography>
-                <Typography variant="caption" sx={{ color: COLORS.income.main }}>↑ {fmt(cs.total_income)} {symbol}</Typography>
+                <Typography variant="caption" sx={{ color: COLORS.income.main }}>↑ {formatCurrency(cs.total_income, cur)}</Typography>
                 <Typography variant="caption" sx={{ color: COLORS.text.tertiary }}>·</Typography>
-                <Typography variant="caption" sx={{ color: COLORS.expense.main }}>↓ {fmt(cs.total_expense)} {symbol}</Typography>
+                <Typography variant="caption" sx={{ color: COLORS.expense.main }}>↓ {formatCurrency(cs.total_expense, cur)}</Typography>
                 <Typography variant="caption" sx={{ color: COLORS.text.tertiary }}>·</Typography>
                 <Typography variant="caption" sx={{ fontWeight: 700, color: positive ? COLORS.income.main : COLORS.expense.main }}>
-                  = {positive ? '+' : '-'}{fmt(cs.total_balance)} {symbol}
+                  = {positive ? '+' : '-'}{formatCurrency(Math.abs(cs.total_balance), cur)}
                 </Typography>
               </Box>
             );
