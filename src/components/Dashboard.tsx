@@ -13,7 +13,6 @@ import {
   Collapse,
   Divider,
   Fade,
-  Fab,
   Table,
   TableBody,
   TableCell,
@@ -193,25 +192,6 @@ const Dashboard: React.FC = () => {
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', bgcolor: COLORS.background.main }}>
       <Container maxWidth={false} disableGutters sx={{ mt: 4, mb: 4, flexGrow: 1, px: { xs: 2, sm: 3, md: 4 } }}>
-        {/* Floating Action Button */}
-      
-      {/* Note: Filter controls moved below summaries */}
-
-      {/* Floating Action Button */}
-      <Fab 
-        color="primary" 
-        aria-label="add"
-        sx={{ 
-          position: 'fixed', 
-          bottom: { xs: 16, sm: 24 }, 
-          right: { xs: 16, sm: 24 },
-          display: { xs: 'flex', sm: 'flex' }
-        }}
-        onClick={handleOpen}
-      >
-        <Add />
-      </Fab>
-
       <Dialog 
         open={open} 
         onClose={handleClose} 
@@ -301,9 +281,14 @@ const Dashboard: React.FC = () => {
       </Collapse>
 
       <Paper sx={{ p: { xs: 2, sm: 3 }, borderRadius: 2 }} elevation={2}>
-        <Typography variant="h5" fontWeight={600} gutterBottom>
-          Transactions
-        </Typography>
+        <Box display="flex" alignItems="center" justifyContent="space-between" mb={1}>
+          <Button variant="contained" startIcon={<Add />} onClick={handleOpen} size="small">
+            Add Transaction
+          </Button>
+          <Typography variant="h5" fontWeight={600}>
+            Transactions
+          </Typography>
+        </Box>
         <Divider sx={{ mb: 2 }} />
         {expenses.length > 0 ? (
           <TableContainer>
@@ -311,12 +296,11 @@ const Dashboard: React.FC = () => {
               <TableHead>
                 <TableRow sx={{ bgcolor: 'action.hover' }}>
                   <TableCell sx={{ fontWeight: 600 }}>Date</TableCell>
-                  <TableCell sx={{ fontWeight: 600 }}>Description</TableCell>
-                  <TableCell sx={{ fontWeight: 600 }}>Type</TableCell>
-                  <TableCell sx={{ fontWeight: 600 }}>Resource</TableCell>
                   <TableCell sx={{ fontWeight: 600 }}>Kind</TableCell>
                   <TableCell align="right" sx={{ fontWeight: 600 }}>Amount</TableCell>
-                  <TableCell sx={{ fontWeight: 600 }}>Currency</TableCell>
+                  <TableCell sx={{ fontWeight: 600 }}>Type</TableCell>
+                  <TableCell sx={{ fontWeight: 600 }}>Resource</TableCell>
+                  <TableCell sx={{ fontWeight: 600 }}>Description</TableCell>
                   <TableCell align="center" sx={{ fontWeight: 600 }}>Actions</TableCell>
                 </TableRow>
               </TableHead>
@@ -332,21 +316,6 @@ const Dashboard: React.FC = () => {
                       <TableCell>
                         <Typography variant="body2" color="text.secondary">
                           {formatDate(expense.date)}
-                        </Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Typography variant="body1" fontWeight={500}>
-                          {expense.description || 'No description'}
-                        </Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Typography variant="body2">
-                          {expense.type}
-                        </Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Typography variant="body2" color="text.secondary">
-                          {expense.resource || '-'}
                         </Typography>
                       </TableCell>
                       <TableCell>
@@ -368,7 +337,17 @@ const Dashboard: React.FC = () => {
                       </TableCell>
                       <TableCell>
                         <Typography variant="body2">
-                          {expense.currency}
+                          {expense.type}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2" color="text.secondary">
+                          {expense.resource || '-'}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2" color="text.secondary">
+                          {expense.description || '-'}
                         </Typography>
                       </TableCell>
                       <TableCell align="center">

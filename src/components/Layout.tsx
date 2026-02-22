@@ -17,7 +17,6 @@ import {
 import {
   Assessment,
   List as ListIcon,
-  AccountBalance,
   Logout,
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -128,7 +127,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           mb: 3,
           boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
         }}>
-          <AccountBalance sx={{ color: '#28C76F', fontSize: 36 }} />
+          <Box component="img" src="/favicon.svg" alt="Mindoh logo" sx={{ width: 36, height: 36 }} />
           <Typography variant="h5" sx={{ fontWeight: 800, color: '#2d3748', letterSpacing: 1 }}>
             Mindoh
           </Typography>
