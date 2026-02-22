@@ -26,17 +26,16 @@ import {
 } from '@mui/material';
 import { FilterList, Add, Edit, Delete, WarningAmber } from '@mui/icons-material';
 import { expenseService } from '../services/expenseService';
-import type { ExpenseFilter, ExpenseSummary } from '../services/expenseService';
+import type { ExpenseFilter } from '../services/expenseService';
 import type { Expense } from '../types/api';
 import AddExpense from './AddExpense';
 import { CURRENCY_SYMBOLS } from '../constants/currencies';
-import { COLORS, BOX_SHADOWS } from '../constants/colors';
+import { COLORS } from '../constants/colors';
 import FilterSection from '../common/FilterSection';
 import { formatDateForDisplay, formatDateToYYYYMMDD } from '../common/utils/dateUtils';
 
 const Dashboard: React.FC = () => {
   const [expenses, setExpenses] = useState<Expense[]>([]);
-  const [summary, setSummary] = useState<ExpenseSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
@@ -51,10 +50,8 @@ const Dashboard: React.FC = () => {
     kind: undefined,
     type: undefined,
     currencies: undefined,
-    original_currency: 'VND',
     from: undefined,
     to: undefined,
-    group_by: undefined,
   });
 
   // Date filter states (stored as Date objects for DatePicker)
@@ -65,21 +62,13 @@ const Dashboard: React.FC = () => {
   const fetchExpenses = async (filterParams?: ExpenseFilter) => {
     setLoading(true);
     setError(null);
-    let summaryData: ExpenseSummary | null = null;
-    let errorMsg: string | null = null;
     try {
-      summaryData = await expenseService.getSummary(filterParams);
+      const result = await expenseService.getExpenses(filterParams);
+      setExpenses(result.data);
     } catch (err: any) {
-      errorMsg = err.response?.data?.message || 'Failed to fetch expenses';
-    }
-    if (summaryData) {
-      setExpenses(summaryData.expenses);
-      setSummary(summaryData);
-    } else {
+      setError(err.response?.data?.message || 'Failed to fetch expenses');
       setExpenses([]);
-      setSummary(null);
     }
-    setError(errorMsg);
     setLoading(false);
   };
 
@@ -101,7 +90,7 @@ const Dashboard: React.FC = () => {
     setEditingExpense(null);
   };
 
-  const handleFilterChange = (field: keyof ExpenseFilter | 'from_date' | 'to_date', value: any) => {
+  const handleFilterChange = (field: string, value: any) => {
     if (field === 'from_date') {
       setFromDate(value);
     } else if (field === 'to_date') {
@@ -115,23 +104,12 @@ const Dashboard: React.FC = () => {
   };
 
   const handleApplyFilters = () => {
-    // Remove empty filter values
     const cleanFilters: ExpenseFilter = {};
     if (filters.kind) cleanFilters.kind = filters.kind;
     if (filters.type) cleanFilters.type = filters.type;
     if (filters.currencies && filters.currencies.length > 0) cleanFilters.currencies = filters.currencies;
-    if (filters.original_currency) cleanFilters.original_currency = filters.original_currency;
-    if (filters.group_by) cleanFilters.group_by = filters.group_by;
-    if (fromDate) {
-      // Format as YYYY-MM-DD
-      cleanFilters.from = formatDateToYYYYMMDD(fromDate);
-    }
-    if (toDate) {
-      // Format as YYYY-MM-DD
-      cleanFilters.to = formatDateToYYYYMMDD(toDate);
-    }
-    
-    console.log('Applying filters:', cleanFilters);
+    if (fromDate) cleanFilters.from = formatDateToYYYYMMDD(fromDate);
+    if (toDate) cleanFilters.to = formatDateToYYYYMMDD(toDate);
     fetchExpenses(cleanFilters);
   };
 
@@ -140,10 +118,8 @@ const Dashboard: React.FC = () => {
       kind: undefined,
       type: undefined,
       currencies: undefined,
-      original_currency: 'VND',
       from: undefined,
       to: undefined,
-      group_by: undefined,
     });
     setFromDate(null);
     setToDate(null);
@@ -238,30 +214,9 @@ const Dashboard: React.FC = () => {
         <Alert severity="error" sx={{ mb: 3 }} variant="filled">{error}</Alert>
       )}
 
-      {/* Summary Section */}
-      {expenses.length > 0 && summary && (
-        <Paper sx={{ 
-          p: 2, 
-          mb: 2, 
-          borderRadius: 2, 
-          background: COLORS.gradients.primary,
-          boxShadow: BOX_SHADOWS.card,
-        }} elevation={0}>
-          <Box display="flex" alignItems="center" justifyContent="space-between" flexWrap="wrap" gap={1}>
-            <Typography variant="subtitle1" fontWeight={600} sx={{ color: COLORS.text.secondary }}>
-              Transaction Summary
-            </Typography>
-            <Box display="flex" flexWrap="wrap" gap={1.5}>
-              <Chip label={`Total: ${expenses.length}`} size="small" sx={{ bgcolor: 'action.hover' }} />
-              <Chip label={`Income: ${formatCurrency(summary.total_income, summary.currency)}`} size="small" color="success" variant="outlined" />
-              <Chip label={`Expense: ${formatCurrency(summary.total_expense, summary.currency)}`} size="small" color="error" variant="outlined" />
-              <Chip label={`Balance: ${formatCurrency(Math.abs(summary.balance), summary.currency)}`} size="small" variant="outlined" />
-            </Box>
-          </Box>
-        </Paper>
-      )}
+      {/* Summary Section removed - use the Summary page for totals */}
 
-      {/* Filter Section moved below summary and above transactions */}
+      {/* Filter Section */}
       <Box display="flex" gap={2} mb={2} flexWrap="wrap">
         <Button 
           variant="outlined"
@@ -303,6 +258,8 @@ const Dashboard: React.FC = () => {
           onClearFilters={handleClearFilters}
           onClose={() => setFilterAnchorEl(null)}
           hasActiveFilters={hasActiveFilters}
+          showGroupBy={false}
+          showOriginalCurrency={false}
         />
       </Popover>
 

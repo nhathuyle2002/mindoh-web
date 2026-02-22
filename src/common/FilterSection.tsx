@@ -31,26 +31,37 @@ interface FilterSectionProps {
   filters: ExtendedExpenseFilter;
   fromDate: Date | null;
   toDate: Date | null;
-  availableTypes: string[];
+  availableTypes?: string[];
   availableCurrencies?: string[];
   onFilterChange: (field: keyof ExtendedExpenseFilter | 'from_date' | 'to_date', value: any) => void;
   onApplyFilters: () => void;
   onClearFilters: () => void;
   onClose?: () => void;
   hasActiveFilters: boolean;
+  // visibility flags (all default to true)
+  showKind?: boolean;
+  showType?: boolean;
+  showCurrencies?: boolean;
+  showGroupBy?: boolean;
+  showOriginalCurrency?: boolean;
 }
 
 const FilterSection: React.FC<FilterSectionProps> = ({
   filters,
   fromDate,
   toDate,
-  availableTypes,
+  availableTypes = [],
   availableCurrencies = ['VND', 'USD'],
   onFilterChange,
   onApplyFilters,
   onClearFilters,
   onClose,
   hasActiveFilters,
+  showKind = true,
+  showType = true,
+  showCurrencies = true,
+  showGroupBy = true,
+  showOriginalCurrency = true,
 }) => {
   return (
     <Paper sx={{ p: 1.5, mb: 2, borderRadius: 2 }} elevation={2}>
@@ -108,6 +119,7 @@ const FilterSection: React.FC<FilterSectionProps> = ({
       {/* Filter Fields */}
       <Box display="flex" flexWrap="wrap" gap={1} mb={1}>
         <Box flex="1 1 150px" minWidth={{ xs: '100%', sm: '150px' }}>
+          {showKind && (
           <TextField
             select
             fullWidth
@@ -121,8 +133,10 @@ const FilterSection: React.FC<FilterSectionProps> = ({
             <MenuItem value="expense">Expense</MenuItem>
             <MenuItem value="income">Income</MenuItem>
           </TextField>
+          )}
         </Box>
         <Box flex="1 1 150px" minWidth={{ xs: '100%', sm: '150px' }}>
+          {showType && (
           <TextField
             select
             fullWidth
@@ -139,8 +153,10 @@ const FilterSection: React.FC<FilterSectionProps> = ({
               </MenuItem>
             ))}
           </TextField>
+          )}
         </Box>
         <Box flex="1 1 150px" minWidth={{ xs: '100%', sm: '150px' }}>
+          {showCurrencies && (
           <TextField
             select
             fullWidth
@@ -163,8 +179,10 @@ const FilterSection: React.FC<FilterSectionProps> = ({
               </MenuItem>
             ))}
           </TextField>
+          )}
         </Box>
         <Box flex="1 1 150px" minWidth={{ xs: '100%', sm: '150px' }}>
+          {showOriginalCurrency && (
           <TextField
             select
             fullWidth
@@ -182,8 +200,10 @@ const FilterSection: React.FC<FilterSectionProps> = ({
               </MenuItem>
             ))}
           </TextField>
+          )}
         </Box>
         <Box flex="1 1 150px" minWidth={{ xs: '100%', sm: '150px' }}>
+          {showGroupBy && (
           <TextField
             select
             fullWidth
@@ -198,6 +218,7 @@ const FilterSection: React.FC<FilterSectionProps> = ({
             <MenuItem value="MONTH">Month</MenuItem>
             <MenuItem value="YEAR">Year</MenuItem>
           </TextField>
+          )}
         </Box>
         <Box flex="1 1 150px" minWidth={{ xs: '100%', sm: '150px' }}>
           <LocalizationProvider dateAdapter={AdapterDateFns}>
