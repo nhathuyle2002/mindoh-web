@@ -19,6 +19,7 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  TablePagination,
   IconButton,
   Tooltip,
   Container,
@@ -32,17 +33,19 @@ import { CURRENCY_SYMBOLS } from '../constants/currencies';
 import { COLORS } from '../constants/colors';
 import FilterSection from '../common/FilterSection';
 import { formatDateForDisplay, formatDateToYYYYMMDD } from '../common/utils/dateUtils';
+import type { SummaryFilter } from '../services/expenseService';
 
 const Dashboard: React.FC = () => {
   const [expenses, setExpenses] = useState<Expense[]>([]);
-  const [count, setCount] = useState<number>(0);
+  const [total, setTotal] = useState<number>(0);
+  const [page, setPage] = useState<number>(0); // 0-indexed for MUI
+  const [rowsPerPage, setRowsPerPage] = useState<number>(25);
   const [incomeCount, setIncomeCount] = useState<number>(0);
   const [expenseCount, setExpenseCount] = useState<number>(0);
   const [byCurrency, setByCurrency] = useState<Record<string, { total_income: number; total_expense: number; total_balance: number }>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
-  const [filterAnchorEl, setFilterAnchorEl] = useState<HTMLElement | null>(null); // kept for compat
   const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
   const [availableTypes, setAvailableTypes] = useState<string[]>([]);
   const [availableCurrencies, setAvailableCurrencies] = useState<string[]>(['VND', 'USD']);
@@ -65,38 +68,81 @@ const Dashboard: React.FC = () => {
   const [fromDate, setFromDate] = useState<Date | null>(null);
   const [toDate, setToDate] = useState<Date | null>(null);
 
-  // Add this function to fetch and update expenses
-  const fetchExpenses = async (filterParams?: ExpenseFilter, col?: string | null, dir?: 'asc' | 'desc' | null) => {
+  // Build clean filter objects from current state
+  const buildCleanFilters = (): ExpenseFilter => {
+    const f: ExpenseFilter = {};
+    if (filters.kind) f.kind = filters.kind;
+    if (filters.types && filters.types.length > 0) f.types = filters.types;
+    if (filters.currencies && filters.currencies.length > 0) f.currencies = filters.currencies;
+    if (fromDate) f.from = formatDateToYYYYMMDD(fromDate);
+    if (toDate) f.to = formatDateToYYYYMMDD(toDate);
+    return f;
+  };
+
+  const buildSummaryFilter = (clean: ExpenseFilter): SummaryFilter => ({
+    kind: clean.kind,
+    types: clean.types,
+    currencies: clean.currencies,
+    from: clean.from,
+    to: clean.to,
+  });
+
+  // fetchRows: only fetches paged data — called on every page/sort/filter change
+  const fetchRows = async (
+    filterParams: ExpenseFilter,
+    col: string | null,
+    dir: 'asc' | 'desc' | null,
+    pg: number,
+    rpp: number,
+  ) => {
     setLoading(true);
     setError(null);
     try {
       const params: ExpenseFilter = { ...filterParams };
-      const activCol = col !== undefined ? col : sortCol;
-      const activDir = dir !== undefined ? dir : sortDir;
-      if (activCol && activDir) {
-        params.order_by = activCol as ExpenseFilter['order_by'];
-        params.order_dir = activDir;
+      if (col && dir) {
+        params.order_by = col as ExpenseFilter['order_by'];
+        params.order_dir = dir;
       }
+      params.page = pg + 1; // backend is 1-indexed
+      params.page_size = rpp;
       const result = await expenseService.getExpenses(params);
       setExpenses(result.data);
-      setCount(result.count);
-      setIncomeCount(result.income_count ?? 0);
-      setExpenseCount(result.expense_count ?? 0);
-      setByCurrency(result.by_currency ?? {});
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to fetch expenses');
       setExpenses([]);
-      setCount(0);
-      setIncomeCount(0);
-      setExpenseCount(0);
-      setByCurrency({});
     }
     setLoading(false);
   };
 
+  // fetchSummary: fetches aggregated totals — called only when filters change, not on page nav
+  const fetchSummary = async (sf: SummaryFilter) => {
+    try {
+      const result = await expenseService.getSummary(sf);
+      setTotal((result.income_count ?? 0) + (result.expense_count ?? 0));
+      setIncomeCount(result.income_count ?? 0);
+      setExpenseCount(result.expense_count ?? 0);
+      setByCurrency((result.by_currency as any) ?? {});
+    } catch {
+      setTotal(0); setIncomeCount(0); setExpenseCount(0); setByCurrency({});
+    }
+  };
+
+  // fetchAll: rows + summary together (filter/sort change)
+  const fetchAll = (
+    filterParams: ExpenseFilter,
+    col: string | null,
+    dir: 'asc' | 'desc' | null,
+    pg: number,
+    rpp: number,
+  ) => {
+    fetchRows(filterParams, col, dir, pg, rpp);
+    fetchSummary(buildSummaryFilter(filterParams));
+  };
+
   useEffect(() => {
-    fetchExpenses();
-    // Fetch available types and currencies
+    const clean = buildCleanFilters();
+    fetchRows(clean, sortCol, sortDir, 0, rowsPerPage);
+    fetchSummary(buildSummaryFilter(clean));
     expenseService.getUniqueTypes().then(types => setAvailableTypes(types)).catch(() => {});
     expenseService.getAvailableCurrencies().then(currencies => setAvailableCurrencies(currencies)).catch(() => {});
     // eslint-disable-next-line
@@ -126,26 +172,17 @@ const Dashboard: React.FC = () => {
   };
 
   const handleApplyFilters = () => {
-    const cleanFilters: ExpenseFilter = {};
-    if (filters.kind) cleanFilters.kind = filters.kind;
-    if (filters.types && filters.types.length > 0) cleanFilters.types = filters.types;
-    if (filters.currencies && filters.currencies.length > 0) cleanFilters.currencies = filters.currencies;
-    if (fromDate) cleanFilters.from = formatDateToYYYYMMDD(fromDate);
-    if (toDate) cleanFilters.to = formatDateToYYYYMMDD(toDate);
-    fetchExpenses(cleanFilters, sortCol, sortDir);
+    setPage(0);
+    const clean = buildCleanFilters();
+    fetchAll(clean, sortCol, sortDir, 0, rowsPerPage);
   };
 
   const handleClearFilters = () => {
-    setFilters({
-      kind: undefined,
-      types: undefined,
-      currencies: undefined,
-      from: undefined,
-      to: undefined,
-    });
+    setFilters({ kind: undefined, types: undefined, currencies: undefined, from: undefined, to: undefined });
     setFromDate(null);
     setToDate(null);
-    fetchExpenses({}, sortCol, sortDir);
+    setPage(0);
+    fetchAll({}, sortCol, sortDir, 0, rowsPerPage);
   };
 
   // 3-state sort: first click → desc, second → asc, third → remove
@@ -161,13 +198,9 @@ const Dashboard: React.FC = () => {
     }
     setSortCol(newCol);
     setSortDir(newDir);
-    const cleanFilters: ExpenseFilter = {};
-    if (filters.kind) cleanFilters.kind = filters.kind;
-    if (filters.types && filters.types.length > 0) cleanFilters.types = filters.types;
-    if (filters.currencies && filters.currencies.length > 0) cleanFilters.currencies = filters.currencies;
-    if (fromDate) cleanFilters.from = formatDateToYYYYMMDD(fromDate);
-    if (toDate) cleanFilters.to = formatDateToYYYYMMDD(toDate);
-    fetchExpenses(cleanFilters, newCol, newDir);
+    setPage(0);
+    // Sort doesn't change which records match — only rows need refresh
+    fetchRows(buildCleanFilters(), newCol, newDir, 0, rowsPerPage);
   };
 
   const SortIcon = ({ col }: { col: string }) => {
@@ -184,7 +217,8 @@ const Dashboard: React.FC = () => {
     if (deleteConfirmId === null) return;
     try {
       await expenseService.deleteExpense(deleteConfirmId);
-      fetchExpenses(filters);
+      const clean = buildCleanFilters();
+      fetchAll(clean, sortCol, sortDir, page, rowsPerPage);
     } catch (err: any) {
       setError(err.response?.data?.error || 'Failed to delete expense');
     } finally {
@@ -198,6 +232,19 @@ const Dashboard: React.FC = () => {
   };
 
   const hasActiveFilters = !!(filters.kind || (filters.types && filters.types.length > 0) || (filters.currencies && filters.currencies.length > 0) || fromDate || toDate);
+
+  const handleChangePage = (_: unknown, newPage: number) => {
+    setPage(newPage);
+    // Pure page navigation — only fetch rows, totals haven't changed
+    fetchRows(buildCleanFilters(), sortCol, sortDir, newPage, rowsPerPage);
+  };
+
+  const handleChangeRowsPerPage = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newRpp = parseInt(e.target.value, 10);
+    setRowsPerPage(newRpp);
+    setPage(0);
+    fetchRows(buildCleanFilters(), sortCol, sortDir, 0, newRpp);
+  };
 
   const formatCurrency = (amount: number, currency: string) => {
     const decimals = currency === 'VND' ? 0 : 2;
@@ -254,7 +301,7 @@ const Dashboard: React.FC = () => {
         <DialogContent sx={{ p: 0 }}>
           <AddExpense
             expense={editingExpense}
-            onExpenseAdded={() => { handleClose(); fetchExpenses(); }}
+            onExpenseAdded={() => { handleClose(); fetchAll(buildCleanFilters(), sortCol, sortDir, page, rowsPerPage); }}
             onClose={handleClose}
           />
         </DialogContent>
@@ -315,7 +362,7 @@ const Dashboard: React.FC = () => {
             </Typography>
             {!loading && (
               <Typography variant="body2" sx={{ color: COLORS.text.tertiary }}>
-                {count} {count === 1 ? 'record' : 'records'}
+                {total} {total === 1 ? 'record' : 'records'}
                 {(incomeCount > 0 || expenseCount > 0) && (
                   <>
                     {' '}(
@@ -335,6 +382,7 @@ const Dashboard: React.FC = () => {
         </Box>
         <Divider sx={{ mb: 2 }} />
         {loading || expenses.length > 0 ? (
+          <>
           <TableContainer>
             <Table sx={{ minWidth: 650 }} size="medium">
               <TableHead>
@@ -449,6 +497,17 @@ const Dashboard: React.FC = () => {
               </TableBody>
             </Table>
           </TableContainer>
+          <TablePagination
+            component="div"
+            count={total}
+            page={page}
+            onPageChange={handleChangePage}
+            rowsPerPage={rowsPerPage}
+            onRowsPerPageChange={handleChangeRowsPerPage}
+            rowsPerPageOptions={[10, 25, 50, 100]}
+            sx={{ borderTop: '1px solid', borderColor: 'divider' }}
+          />
+          </>
         ) : (
           <Box textAlign="center" py={8}>
             <Typography variant="h6" color="text.secondary" gutterBottom>

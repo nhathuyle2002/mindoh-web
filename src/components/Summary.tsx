@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Container,
   Paper,
@@ -23,6 +23,7 @@ import {
   InputLabel,
   Switch,
   FormControlLabel,
+  TablePagination,
 } from '@mui/material';
 import { format, startOfMonth, endOfMonth, subMonths, subDays } from 'date-fns';
 import { 
@@ -34,7 +35,7 @@ import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { expenseService } from '../services/expenseService';
-import type { SummaryFilter, ExpenseSummary as ExpenseSummaryType } from '../services/expenseService';
+import type { SummaryFilter, GroupsFilter, ExpenseSummary as ExpenseSummaryType, ExpenseGroup } from '../services/expenseService';
 import { PieChart } from '@mui/x-charts/PieChart';
 import { LineChart } from '@mui/x-charts/LineChart';
 import { CURRENCY_SYMBOLS } from '../constants/currencies';
@@ -44,6 +45,11 @@ type DatePreset = 'all' | 'last_7d' | 'this_month' | 'last_3m' | 'last_6m' | 'la
 
 const Summary: React.FC = () => {
   const [summary, setSummary] = useState<ExpenseSummaryType | null>(null);
+  const [groups, setGroups] = useState<ExpenseGroup[]>([]);
+  const [groupsTotal, setGroupsTotal] = useState(0);
+  const [groupsPage, setGroupsPage] = useState(0);
+  const [groupsPageSize, setGroupsPageSize] = useState(12);
+  const groupsFilterRef = useRef<GroupsFilter | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [availableCurrencies, setAvailableCurrencies] = useState<string[]>(['VND', 'USD']);
@@ -72,13 +78,50 @@ const Summary: React.FC = () => {
     setLoading(false);
   };
 
+  const fetchGroups = async (filterParams: GroupsFilter) => {
+    try {
+      const result = await expenseService.getGroups(filterParams);
+      setGroups(result.groups);
+      setGroupsTotal(result.total);
+    } catch {
+      setGroups([]);
+      setGroupsTotal(0);
+    }
+  };
+
   const buildAndFetch = (params: { from?: Date | null; to?: Date | null; currency?: string; group_by?: string }) => {
     const cleanFilters: SummaryFilter = {};
     if (params.currency) cleanFilters.original_currency = params.currency;
     if (params.from) cleanFilters.from = format(params.from, 'yyyy-MM-dd');
     if (params.to) cleanFilters.to = format(params.to, 'yyyy-MM-dd');
-    if (params.group_by) cleanFilters.group_by = params.group_by;
     fetchSummary(cleanFilters);
+    if (params.group_by) {
+      const gf: GroupsFilter = {
+        group_by: params.group_by,
+        original_currency: params.currency,
+        from: params.from ? format(params.from, 'yyyy-MM-dd') : undefined,
+        to: params.to ? format(params.to, 'yyyy-MM-dd') : undefined,
+      };
+      groupsFilterRef.current = gf;
+      setGroupsPage(0);
+      fetchGroups({ ...gf, page: 1, page_size: groupsPageSize });
+    }
+  };
+
+  const handleGroupsPageChange = (_: unknown, newPage: number) => {
+    setGroupsPage(newPage);
+    if (groupsFilterRef.current) {
+      fetchGroups({ ...groupsFilterRef.current, page: newPage + 1, page_size: groupsPageSize });
+    }
+  };
+
+  const handleGroupsRowsPerPageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newSize = parseInt(e.target.value, 10);
+    setGroupsPageSize(newSize);
+    setGroupsPage(0);
+    if (groupsFilterRef.current) {
+      fetchGroups({ ...groupsFilterRef.current, page: 1, page_size: newSize });
+    }
   };
 
   const getPresetDates = (preset: DatePreset): { from: Date; to: Date } | null => {
@@ -637,17 +680,17 @@ const Summary: React.FC = () => {
         )}
 
         {/* Line Chart */}
-        {summary?.groups && summary.groups.length > 0 && (
+        {groups.length > 0 && (
           <Paper sx={{ p: 3, mb: 4, borderRadius: 3, boxShadow: BOX_SHADOWS.card }}>
             <Typography variant="h6" fontWeight={700} mb={2} sx={{ color: COLORS.text.primary }}>
-              Trend ({summary.currency})
+              Trend ({summary?.currency})
             </Typography>
             <LineChart
-              xAxis={[{ data: summary.groups.map(g => g.label), scaleType: 'point' }]}
+              xAxis={[{ data: groups.map(g => g.label), scaleType: 'point' }]}
               series={[
-                { data: summary.groups.map(g => g.income), label: 'Income', color: '#28C76F' },
-                { data: summary.groups.map(g => Math.abs(g.expense)), label: 'Expense', color: '#EA5455' },
-                { data: summary.groups.map(g => g.balance), label: 'Balance', color: '#4F9CFE' },
+                { data: groups.map(g => g.income), label: 'Income', color: '#28C76F' },
+                { data: groups.map(g => Math.abs(g.expense)), label: 'Expense', color: '#EA5455' },
+                { data: groups.map(g => g.balance), label: 'Balance', color: '#4F9CFE' },
               ]}
               height={300}
               margin={{ left: 70 }}
@@ -656,7 +699,7 @@ const Summary: React.FC = () => {
         )}
 
         {/* Grouped Summary - Table Format */}
-        {summary?.groups && summary.groups.length > 0 && (
+        {groups.length > 0 && (
           <Box mt={4}>
             <Typography variant="h5" fontWeight="bold" mb={3} sx={{ color: COLORS.text.primary }}>
               Grouped Summary
@@ -680,7 +723,7 @@ const Summary: React.FC = () => {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {summary.groups.map((group) => (
+                  {groups.map((group) => (
                     <TableRow 
                       key={group.key}
                       sx={{ 
@@ -692,10 +735,10 @@ const Summary: React.FC = () => {
                         {group.label}
                       </TableCell>
                       <TableCell align="right" sx={{ color: COLORS.income.main, fontWeight: 600 }}>
-                        {formatCurrency(group.income, summary.currency)}
+                        {formatCurrency(group.income, summary?.currency ?? '')}
                       </TableCell>
                       <TableCell align="right" sx={{ color: COLORS.expense.main, fontWeight: 600 }}>
-                        {formatCurrency(group.expense, summary.currency)}
+                        {formatCurrency(group.expense, summary?.currency ?? '')}
                       </TableCell>
                       <TableCell 
                         align="right" 
@@ -704,7 +747,7 @@ const Summary: React.FC = () => {
                           fontWeight: 600,
                         }}
                       >
-                        {group.balance < 0 ? '-' : ''}{formatCurrency(Math.abs(group.balance), summary.currency)} {group.balance >= 0 ? '↑' : '↓'}
+                        {group.balance < 0 ? '-' : ''}{formatCurrency(Math.abs(group.balance), summary?.currency ?? '')} {group.balance >= 0 ? '↑' : '↓'}
                       </TableCell>
                       <TableCell sx={{ color: COLORS.text.secondary, fontSize: '0.875rem' }}>
                         {Object.keys(group.total_by_type).length > 0 ? (
@@ -712,7 +755,7 @@ const Summary: React.FC = () => {
                             .sort(([, a], [, b]) => (b as number) - (a as number))
                             .map(([type, amount]) => (
                               <Box key={type} component="span" sx={{ display: 'block', mb: 0.5 }}>
-                                {type}: {formatCurrency(amount, summary.currency)}
+                                {type}: {formatCurrency(amount, summary?.currency ?? '')}
                               </Box>
                             ))
                         ) : (
@@ -723,6 +766,16 @@ const Summary: React.FC = () => {
                   ))}
                 </TableBody>
               </Table>
+              <TablePagination
+                component="div"
+                count={groupsTotal}
+                page={groupsPage}
+                onPageChange={handleGroupsPageChange}
+                rowsPerPage={groupsPageSize}
+                onRowsPerPageChange={handleGroupsRowsPerPageChange}
+                rowsPerPageOptions={[6, 12, 24, 50]}
+                sx={{ color: COLORS.text.secondary }}
+              />
             </TableContainer>
           </Box>
         )}

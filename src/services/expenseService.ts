@@ -6,28 +6,51 @@ import type { Expense, ExpenseRequest, ExpenseKind } from '../types/api';
 export type ExpenseFilter = {
   user_id?: number;
   kind?: ExpenseKind;
-  types?: string[];  // Filter by multiple types
-  currencies?: string[];  // Filter by multiple currencies
+  types?: string[];
+  currencies?: string[];
   from?: string;
   to?: string;
-  order_by?: 'date' | 'amount' | 'type' | 'kind' | 'currency' | 'created_at'; // default: date
-  order_dir?: 'asc' | 'desc'; // default: desc
+  order_by?: 'date' | 'amount' | 'type' | 'kind' | 'currency' | 'created_at';
+  order_dir?: 'asc' | 'desc';
+  page?: number;
+  page_size?: number;
 };
 
 export type ExpenseListResponse = {
+  page: number;
+  page_size: number;
   count: number;
-  income_count: number;
-  expense_count: number;
-  by_currency: Record<string, { total_income: number; total_expense: number; total_balance: number }>;
   data: Expense[];
 };
 
-// Filter for the summary endpoint only
+// Filter for the summary endpoint
 export type SummaryFilter = {
-  original_currency?: string; // Currency to express totals in (default: VND)
+  kind?: ExpenseKind;
+  types?: string[];
+  currencies?: string[];
+  original_currency?: string;
   from?: string;
   to?: string;
-  group_by?: string;          // DAY, MONTH, YEAR
+};
+
+// Filter for the groups (time-bucket) endpoint
+export type GroupsFilter = {
+  kind?: ExpenseKind;
+  types?: string[];
+  currencies?: string[];
+  original_currency?: string;
+  from?: string;
+  to?: string;
+  group_by: string;  // DAY, WEEK, MONTH, YEAR
+  page?: number;
+  page_size?: number;
+};
+
+export type ExpenseGroupsResponse = {
+  total: number;
+  page: number;
+  page_size: number;
+  groups: ExpenseGroup[];
 };
 
 export type ExpenseGroup = {
@@ -46,14 +69,15 @@ export type CurrencySummary = {
 };
 
 export type ExpenseSummary = {
-  currency: string;              // Currency totals are expressed in
+  currency: string;
+  income_count: number;
+  expense_count: number;
   total_income: number;
   total_expense: number;
   total_balance: number;
-  total_by_type_income: Record<string, number>;   // Income totals per type (converted)
-  total_by_type_expense: Record<string, number>;  // Expense totals per type (absolute, converted)
-  by_currency?: Record<string, CurrencySummary>;  // Per-currency breakdown (only when multi-currency)
-  groups?: ExpenseGroup[];       // Only present when group_by is set
+  total_by_type_income: Record<string, number>;
+  total_by_type_expense: Record<string, number>;
+  by_currency?: Record<string, CurrencySummary>;
 };
 
 export const expenseService = {
@@ -83,6 +107,11 @@ export const expenseService = {
 
   async getSummary(filters?: SummaryFilter): Promise<ExpenseSummary> {
     const response = await apiClient.get<ExpenseSummary>('/expenses/summary', { params: filters });
+    return response.data;
+  },
+
+  async getGroups(filters: GroupsFilter): Promise<ExpenseGroupsResponse> {
+    const response = await apiClient.get<ExpenseGroupsResponse>('/expenses/groups', { params: filters });
     return response.data;
   },
 
