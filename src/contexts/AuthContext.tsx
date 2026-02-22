@@ -16,13 +16,14 @@ type AuthAction =
   | { type: 'AUTH_FAILURE'; payload: string }
   | { type: 'AUTH_REGISTER_SUCCESS' }
   | { type: 'UPDATE_USER'; payload: User }
+  | { type: 'AUTH_INIT_DONE' }
   | { type: 'LOGOUT' }
   | { type: 'CLEAR_ERROR' };
 
 const initialState: AuthState = {
   user: null,
   token: null,
-  loading: false,
+  loading: true,
   error: null,
 };
 
@@ -63,6 +64,8 @@ const authReducer = (state: AuthState, action: AuthAction): AuthState => {
       };
     case 'CLEAR_ERROR':
       return { ...state, error: null };
+    case 'AUTH_INIT_DONE':
+      return { ...state, loading: false };
     default:
       return state;
   }
@@ -96,15 +99,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [state, dispatch] = useReducer(authReducer, initialState);
 
   useEffect(() => {
-    // Check for stored authentication on app startup
     const storedToken = authService.getStoredToken();
     const storedUser = authService.getStoredUser();
-    
     if (storedToken && storedUser) {
-      dispatch({
-        type: 'AUTH_SUCCESS',
-        payload: { token: storedToken, user: storedUser }
-      });
+      dispatch({ type: 'AUTH_SUCCESS', payload: { token: storedToken, user: storedUser } });
+    } else {
+      dispatch({ type: 'AUTH_INIT_DONE' });
     }
   }, []);
 

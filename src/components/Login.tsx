@@ -22,7 +22,7 @@ const Login: React.FC = () => {
 
   useEffect(() => {
     if (state.user) {
-      navigate('/transactions');
+      navigate('/summary');
     }
   }, [state.user, navigate]);
 
