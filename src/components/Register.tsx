@@ -48,7 +48,10 @@ useEffect(() => {
     }
 
     if (username && email && password) {
-      await register(username, email, password);
+      const success = await register(username, email, password);
+      if (success) {
+        navigate('/login');
+      }
     }
   };
 

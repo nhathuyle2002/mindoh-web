@@ -14,6 +14,7 @@ type AuthAction =
   | { type: 'AUTH_START' }
   | { type: 'AUTH_SUCCESS'; payload: { user: User; token: string } }
   | { type: 'AUTH_FAILURE'; payload: string }
+  | { type: 'AUTH_REGISTER_SUCCESS' }
   | { type: 'LOGOUT' }
   | { type: 'CLEAR_ERROR' };
 
@@ -34,6 +35,12 @@ const authReducer = (state: AuthState, action: AuthAction): AuthState => {
         loading: false,
         user: action.payload.user,
         token: action.payload.token,
+        error: null,
+      };
+    case 'AUTH_REGISTER_SUCCESS':
+      return {
+        ...state,
+        loading: false,
         error: null,
       };
     case 'AUTH_FAILURE':
@@ -62,7 +69,7 @@ interface AuthContextType {
   state: AuthState;
   dispatch: React.Dispatch<AuthAction>;
   login: (username: string, password: string) => Promise<void>;
-  register: (username: string, email: string, password: string) => Promise<void>;
+  register: (username: string, email: string, password: string) => Promise<boolean>;
   logout: () => void;
   clearError: () => void;
 }
@@ -117,21 +124,21 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   // Register does not log in, just stores user and redirects to login
-  const register = async (username: string, email: string, password: string) => {
+  const register = async (username: string, email: string, password: string): Promise<boolean> => {
     try {
       dispatch({ type: 'AUTH_START' });
-      const response = await authService.register({ username, email, password });
-      // Store user in localStorage (no token)
-      localStorage.setItem('user', JSON.stringify(response.user));
+      await authService.register({ username, email, password });
+      // Do not store user locally as they need to login
       dispatch({
-        type: 'AUTH_SUCCESS',
-        payload: { token: '', user: response.user }
+        type: 'AUTH_REGISTER_SUCCESS',
       });
+      return true;
     } catch (error: any) {
       dispatch({
         type: 'AUTH_FAILURE',
         payload: error.response?.data?.message || 'Registration failed'
       });
+      return false;
     }
   };
 
