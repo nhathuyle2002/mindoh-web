@@ -24,7 +24,7 @@ import {
   Switch,
   FormControlLabel,
 } from '@mui/material';
-import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subMonths } from 'date-fns';
+import { format, startOfMonth, endOfMonth, subMonths, subDays } from 'date-fns';
 import { 
   TrendingUp, 
   TrendingDown, 
@@ -36,10 +36,11 @@ import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { expenseService } from '../services/expenseService';
 import type { SummaryFilter, ExpenseSummary as ExpenseSummaryType } from '../services/expenseService';
 import { PieChart } from '@mui/x-charts/PieChart';
+import { LineChart } from '@mui/x-charts/LineChart';
 import { CURRENCY_SYMBOLS } from '../constants/currencies';
 import { COLORS, BOX_SHADOWS } from '../constants/colors';
 
-type DatePreset = 'this_week' | 'this_month' | 'last_month' | 'custom';
+type DatePreset = 'all' | 'last_7d' | 'this_month' | 'last_3m' | 'last_6m' | 'last_12m' | 'custom';
 
 const Summary: React.FC = () => {
   const [summary, setSummary] = useState<ExpenseSummaryType | null>(null);
@@ -51,10 +52,12 @@ const Summary: React.FC = () => {
 
   // Filter states
   const [originalCurrency, setOriginalCurrency] = useState<string>('VND');
-  const [datePreset, setDatePreset] = useState<DatePreset>('this_month');
+  const [datePreset, setDatePreset] = useState<DatePreset>('all');
   const [showByCurrency, setShowByCurrency] = useState(true);
-  const [fromDate, setFromDate] = useState<Date | null>(startOfMonth(new Date()));
-  const [toDate, setToDate] = useState<Date | null>(endOfMonth(new Date()));
+  const [fromDate, setFromDate] = useState<Date | null>(null);
+  const [toDate, setToDate] = useState<Date | null>(null);
+  const isCustom = datePreset === 'custom';
+  const [groupBy, setGroupBy] = useState<'DAY' | 'WEEK' | 'MONTH'>('MONTH');
 
   const fetchSummary = async (filterParams?: SummaryFilter) => {
     setLoading(true);
@@ -69,31 +72,40 @@ const Summary: React.FC = () => {
     setLoading(false);
   };
 
-  const buildAndFetch = (params: { from?: Date | null; to?: Date | null; currency?: string }) => {
+  const buildAndFetch = (params: { from?: Date | null; to?: Date | null; currency?: string; group_by?: string }) => {
     const cleanFilters: SummaryFilter = {};
     if (params.currency) cleanFilters.original_currency = params.currency;
     if (params.from) cleanFilters.from = format(params.from, 'yyyy-MM-dd');
     if (params.to) cleanFilters.to = format(params.to, 'yyyy-MM-dd');
+    if (params.group_by) cleanFilters.group_by = params.group_by;
     fetchSummary(cleanFilters);
   };
 
   const getPresetDates = (preset: DatePreset): { from: Date; to: Date } | null => {
     const now = new Date();
     switch (preset) {
-      case 'this_week':
-        return { from: startOfWeek(now, { weekStartsOn: 1 }), to: endOfWeek(now, { weekStartsOn: 1 }) };
-      case 'this_month':
-        return { from: startOfMonth(now), to: endOfMonth(now) };
-      case 'last_month':
-        return { from: startOfMonth(subMonths(now, 1)), to: endOfMonth(subMonths(now, 1)) };
-      default:
-        return null;
+      case 'all':      return null;
+      case 'last_7d':  return { from: subDays(now, 6), to: now };
+      case 'this_month': return { from: startOfMonth(now), to: endOfMonth(now) };
+      case 'last_3m':  return { from: startOfMonth(subMonths(now, 2)), to: endOfMonth(now) };
+      case 'last_6m':  return { from: startOfMonth(subMonths(now, 5)), to: endOfMonth(now) };
+      case 'last_12m': return { from: startOfMonth(subMonths(now, 11)), to: endOfMonth(now) };
+      default:         return null;
+    }
+  };
+
+  const defaultGroupByForPreset = (preset: DatePreset): 'DAY' | 'WEEK' | 'MONTH' => {
+    switch (preset) {
+      case 'all':
+      case 'last_3m':
+      case 'last_6m':
+      case 'last_12m': return 'MONTH';
+      default:         return 'DAY';
     }
   };
 
   useEffect(() => {
-    const dates = getPresetDates('this_month')!;
-    buildAndFetch({ from: dates.from, to: dates.to, currency: originalCurrency });
+    buildAndFetch({ from: null, to: null, currency: originalCurrency, group_by: 'MONTH' });
     expenseService.getAvailableCurrencies().then(currencies => setAvailableCurrencies(currencies)).catch(() => {});
     expenseService.getExchangeRates().then(({ base_currency, rates }) => { setBaseCurrency(base_currency); setExchangeRates(rates); }).catch(() => {});
     // eslint-disable-next-line
@@ -102,29 +114,43 @@ const Summary: React.FC = () => {
   const handlePresetChange = (_: React.MouseEvent<HTMLElement>, preset: DatePreset | null) => {
     if (!preset) return;
     setDatePreset(preset);
+    const newGroupBy = defaultGroupByForPreset(preset);
+    setGroupBy(newGroupBy);
+    if (preset === 'all') {
+      setFromDate(null);
+      setToDate(null);
+      buildAndFetch({ from: null, to: null, currency: originalCurrency, group_by: newGroupBy });
+      return;
+    }
     const dates = getPresetDates(preset);
     if (dates) {
       setFromDate(dates.from);
       setToDate(dates.to);
-      buildAndFetch({ from: dates.from, to: dates.to, currency: originalCurrency });
+      buildAndFetch({ from: dates.from, to: dates.to, currency: originalCurrency, group_by: newGroupBy });
     }
   };
 
   const handleCustomFromChange = (date: Date | null) => {
     setFromDate(date);
     setDatePreset('custom');
-    buildAndFetch({ from: date, to: toDate, currency: originalCurrency });
+    buildAndFetch({ from: date, to: toDate, currency: originalCurrency, group_by: groupBy });
   };
 
   const handleCustomToChange = (date: Date | null) => {
     setToDate(date);
     setDatePreset('custom');
-    buildAndFetch({ from: fromDate, to: date, currency: originalCurrency });
+    buildAndFetch({ from: fromDate, to: date, currency: originalCurrency, group_by: groupBy });
   };
 
   const handleCurrencyChange = (currency: string) => {
     setOriginalCurrency(currency);
-    buildAndFetch({ from: fromDate, to: toDate, currency });
+    buildAndFetch({ from: fromDate, to: toDate, currency, group_by: groupBy });
+  };
+
+  const handleGroupByChange = (_: React.MouseEvent<HTMLElement>, val: 'DAY' | 'WEEK' | 'MONTH' | null) => {
+    if (!val) return;
+    setGroupBy(val);
+    buildAndFetch({ from: fromDate, to: toDate, currency: originalCurrency, group_by: val });
   };
 
   const formatCurrency = (amount: number, currency: string) => {
@@ -200,18 +226,27 @@ const Summary: React.FC = () => {
                   exclusive
                   onChange={handlePresetChange}
                   size="small"
-                  sx={{ flexWrap: 'wrap' }}
                 >
-                  <ToggleButton value="this_week">This Week</ToggleButton>
-                  <ToggleButton value="this_month">This Month</ToggleButton>
-                  <ToggleButton value="last_month">Last Month</ToggleButton>
-                  <ToggleButton value="custom">Custom</ToggleButton>
+                  {([
+                    ['all',        'All'],
+                    ['last_7d',    'Last 7 Days'],
+                    ['this_month', 'This Month'],
+                    ['last_3m',   'Last 3 Months'],
+                    ['last_6m',   'Last 6 Months'],
+                    ['last_12m',  'Last 12 Months'],
+                    ['custom',     'Custom'],
+                  ] as const).map(([v, label]) => (
+                    <ToggleButton key={v} value={v} sx={{ minWidth: 96 }}>
+                      {label}
+                    </ToggleButton>
+                  ))}
                 </ToggleButtonGroup>
                 <Box display="flex" gap={1} alignItems="center" flexWrap="wrap">
                   <DatePicker
                     label="From"
                     value={fromDate}
                     onChange={handleCustomFromChange}
+                    disabled={!isCustom}
                     slotProps={{ textField: { size: 'small' } }}
                   />
                   <Typography variant="body2" sx={{ color: COLORS.text.tertiary }}>→</Typography>
@@ -219,28 +254,50 @@ const Summary: React.FC = () => {
                     label="To"
                     value={toDate}
                     onChange={handleCustomToChange}
+                    disabled={!isCustom}
                     slotProps={{ textField: { size: 'small' } }}
                   />
                 </Box>
               </Box>
-              {/* Right: currency selector + by currency toggle */}
-              <Box display="flex" alignItems="center" gap={2}>
-              <FormControlLabel
-                control={<Switch checked={showByCurrency} onChange={(e) => setShowByCurrency(e.target.checked)} size="small" />}
-                label={<Typography variant="body2" sx={{ color: COLORS.text.secondary }}>By Currency</Typography>}
-              />
-              <FormControl size="small" sx={{ minWidth: 150 }}>
-                <InputLabel>Currency</InputLabel>
-                <Select
-                  value={originalCurrency}
-                  label="Currency"
-                  onChange={(e) => handleCurrencyChange(e.target.value)}
-                >
-                  {availableCurrencies.map((c) => (
-                    <MenuItem key={c} value={c}>{c}</MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
+              {/* Right: currency controls (top) + group-by (bottom) */}
+              <Box display="flex" flexDirection="column" alignItems="flex-end" gap={1.5}>
+                {/* Top row: By Currency toggle + Currency selector */}
+                <Box display="flex" alignItems="center" gap={2} flexWrap="wrap" justifyContent="flex-end">
+                  <FormControlLabel
+                    control={<Switch checked={showByCurrency} onChange={(e) => setShowByCurrency(e.target.checked)} size="small" />}
+                    label={<Typography variant="body2" sx={{ color: COLORS.text.secondary }}>By Currency</Typography>}
+                  />
+                  <FormControl size="small" sx={{ minWidth: 150 }}>
+                    <InputLabel>Currency</InputLabel>
+                    <Select
+                      value={originalCurrency}
+                      label="Currency"
+                      onChange={(e) => handleCurrencyChange(e.target.value)}
+                    >
+                      {availableCurrencies.map((c) => (
+                        <MenuItem key={c} value={c}>{c}</MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Box>
+                {/* Bottom row: Group by toggle */}
+                <Box display="flex" flexDirection="column" alignItems="flex-end" gap={0.5}>
+                  <Typography variant="caption" sx={{ color: COLORS.text.tertiary, fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+                    Group by
+                  </Typography>
+                  <ToggleButtonGroup
+                    value={groupBy}
+                    exclusive
+                    onChange={handleGroupByChange}
+                    size="small"
+                  >
+                    {(['DAY', 'WEEK', 'MONTH'] as const).map((v) => (
+                      <ToggleButton key={v} value={v} sx={{ minWidth: 96 }}>
+                        {v.charAt(0) + v.slice(1).toLowerCase()}
+                      </ToggleButton>
+                    ))}
+                  </ToggleButtonGroup>
+                </Box>
               </Box>
             </Box>
           </Paper>
@@ -577,6 +634,25 @@ const Summary: React.FC = () => {
               )}
             </Box>
           </Box>
+        )}
+
+        {/* Line Chart */}
+        {summary?.groups && summary.groups.length > 0 && (
+          <Paper sx={{ p: 3, mb: 4, borderRadius: 3, boxShadow: BOX_SHADOWS.card }}>
+            <Typography variant="h6" fontWeight={700} mb={2} sx={{ color: COLORS.text.primary }}>
+              Trend ({summary.currency})
+            </Typography>
+            <LineChart
+              xAxis={[{ data: summary.groups.map(g => g.label), scaleType: 'point' }]}
+              series={[
+                { data: summary.groups.map(g => g.income), label: 'Income', color: '#28C76F' },
+                { data: summary.groups.map(g => Math.abs(g.expense)), label: 'Expense', color: '#EA5455' },
+                { data: summary.groups.map(g => g.balance), label: 'Balance', color: '#4F9CFE' },
+              ]}
+              height={300}
+              margin={{ left: 70 }}
+            />
+          </Paper>
         )}
 
         {/* Grouped Summary - Table Format */}
