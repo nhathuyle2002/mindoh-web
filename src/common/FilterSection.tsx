@@ -1,25 +1,28 @@
 import React from 'react';
 import {
   Box,
-  Paper,
   Typography,
-  TextField,
-  MenuItem,
   Button,
   IconButton,
+  Chip,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
+  OutlinedInput,
+  Checkbox,
+  ListItemText,
 } from '@mui/material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
-import { Close } from '@mui/icons-material';
+import { Close, FilterAlt, FilterAltOff } from '@mui/icons-material';
 import { COLORS } from '../constants/colors';
 import type { ExpenseKind } from '../types/api';
-import FilterChip from './FilterChip';
 
-// Extended filter interface to match Dashboard usage
 interface ExtendedExpenseFilter {
   kind?: ExpenseKind;
-  type?: string;
+  types?: string[];
   currencies?: string[];
   original_currency?: string;
   from?: string;
@@ -38,13 +41,15 @@ interface FilterSectionProps {
   onClearFilters: () => void;
   onClose?: () => void;
   hasActiveFilters: boolean;
-  // visibility flags (all default to true)
   showKind?: boolean;
   showType?: boolean;
   showCurrencies?: boolean;
   showGroupBy?: boolean;
   showOriginalCurrency?: boolean;
 }
+
+const selectSx = { fontSize: '0.875rem', height: 40 };
+const fcSx = { minWidth: 130, flex: '1 1 130px' };
 
 const FilterSection: React.FC<FilterSectionProps> = ({
   filters,
@@ -63,225 +68,146 @@ const FilterSection: React.FC<FilterSectionProps> = ({
   showGroupBy = true,
   showOriginalCurrency = true,
 }) => {
+  const activeChips: { label: string; onDelete: () => void }[] = [];
+  if (filters.kind) activeChips.push({ label: `Kind: ${filters.kind}`, onDelete: () => onFilterChange('kind', undefined) });
+  if (filters.types?.length) activeChips.push({ label: `Types: ${filters.types.join(', ')}`, onDelete: () => onFilterChange('types', []) });
+  if (filters.currencies?.length) activeChips.push({ label: `Currencies: ${filters.currencies.join(', ')}`, onDelete: () => onFilterChange('currencies', []) });
+  if (filters.group_by) activeChips.push({ label: `Group: ${filters.group_by}`, onDelete: () => onFilterChange('group_by', undefined) });
+  if (fromDate) activeChips.push({ label: `From: ${fromDate.toLocaleDateString()}`, onDelete: () => onFilterChange('from_date', null) });
+  if (toDate) activeChips.push({ label: `To: ${toDate.toLocaleDateString()}`, onDelete: () => onFilterChange('to_date', null) });
+
   return (
-    <Paper sx={{ p: 1.5, mb: 2, borderRadius: 2 }} elevation={2}>
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-        <Typography variant="subtitle1" fontWeight={600}>Filter Expenses</Typography>
-        {onClose && (
-          <IconButton size="small" onClick={onClose}>
-            <Close />
-          </IconButton>
-        )}
+    <Box sx={{ px: 2.5, pt: 2, pb: activeChips.length > 0 ? 1.5 : 2 }}>
+      {/* Header */}
+      <Box display="flex" alignItems="center" justifyContent="space-between" mb={1.5}>
+        <Box display="flex" alignItems="center" gap={1}>
+          <FilterAlt fontSize="small" sx={{ color: hasActiveFilters ? COLORS.income.main : COLORS.text.tertiary }} />
+          <Typography variant="subtitle2" fontWeight={700} sx={{ color: COLORS.text.primary, letterSpacing: '0.02em' }}>
+            Filters
+          </Typography>
+          {hasActiveFilters && (
+            <Chip label={activeChips.length} size="small"
+              sx={{ height: 18, fontSize: '0.7rem', bgcolor: COLORS.income.main, color: '#fff', fontWeight: 700, ml: 0.5 }} />
+          )}
+        </Box>
+        <Box display="flex" gap={1} alignItems="center">
+          {hasActiveFilters && (
+            <Button size="small" startIcon={<FilterAltOff fontSize="small" />} onClick={onClearFilters}
+              sx={{ fontSize: '0.76rem', color: COLORS.text.tertiary, textTransform: 'none', minWidth: 0, px: 1 }}>
+              Clear all
+            </Button>
+          )}
+          <Button size="small" variant="contained" onClick={onApplyFilters}
+            sx={{
+              fontSize: '0.8rem', fontWeight: 700, textTransform: 'none', borderRadius: 2, px: 2.5,
+              background: `linear-gradient(135deg, ${COLORS.income.light} 0%, ${COLORS.income.main} 100%)`,
+              boxShadow: '0 2px 8px rgba(40,199,111,0.25)',
+              '&:hover': { boxShadow: '0 4px 12px rgba(40,199,111,0.35)', transform: 'translateY(-1px)' },
+              transition: 'all 0.15s ease',
+            }}>
+            Apply
+          </Button>
+          {onClose && (
+            <IconButton size="small" onClick={onClose} sx={{ color: COLORS.text.tertiary }}>
+              <Close fontSize="small" />
+            </IconButton>
+          )}
+        </Box>
       </Box>
-      
-      {/* Active Filters */}
-      {hasActiveFilters && (
-        <Box display="flex" flexWrap="wrap" gap={1} mb={2}>
-          {filters.kind && (
-            <FilterChip
-              label={`Kind: ${filters.kind}`}
-              onDelete={() => onFilterChange('kind', undefined)}
-            />
+
+      {/* Controls */}
+      <LocalizationProvider dateAdapter={AdapterDateFns}>
+        <Box display="flex" flexWrap="wrap" gap={1.5} alignItems="center">
+          {showKind && (
+            <FormControl size="small" sx={fcSx}>
+              <InputLabel sx={{ fontSize: '0.82rem' }}>Kind</InputLabel>
+              <Select value={filters.kind || ''} label="Kind"
+                onChange={(e) => onFilterChange('kind', e.target.value as ExpenseKind || undefined)} sx={selectSx}>
+                <MenuItem value=""><em>All</em></MenuItem>
+                <MenuItem value="expense">Expense</MenuItem>
+                <MenuItem value="income">Income</MenuItem>
+              </Select>
+            </FormControl>
           )}
-          {filters.type && (
-            <FilterChip
-              label={`Type: ${filters.type}`}
-              onDelete={() => onFilterChange('type', undefined)}
-            />
+
+          {showType && availableTypes.length > 0 && (
+            <FormControl size="small" sx={{ ...fcSx, minWidth: 160 }}>
+              <InputLabel sx={{ fontSize: '0.82rem' }}>Types</InputLabel>
+              <Select multiple value={filters.types || []}
+                onChange={(e) => { const v = e.target.value; onFilterChange('types', typeof v === 'string' ? v.split(',') : v); }}
+                input={<OutlinedInput label="Types" />}
+                renderValue={(s) => (s as string[]).join(', ')} sx={selectSx}>
+                {availableTypes.map((t) => (
+                  <MenuItem key={t} value={t} dense>
+                    <Checkbox size="small" checked={(filters.types || []).includes(t)} sx={{ py: 0 }} />
+                    <ListItemText primary={t} primaryTypographyProps={{ fontSize: '0.85rem' }} />
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
           )}
-          {filters.currencies && filters.currencies.length > 0 && (
-            <FilterChip
-              label={`Currencies: ${filters.currencies.join(', ')}`}
-              onDelete={() => onFilterChange('currencies', [])}
-            />
+
+          {showCurrencies && (
+            <FormControl size="small" sx={{ ...fcSx, minWidth: 150 }}>
+              <InputLabel sx={{ fontSize: '0.82rem' }}>Currencies</InputLabel>
+              <Select multiple value={filters.currencies || []}
+                onChange={(e) => { const v = e.target.value; onFilterChange('currencies', typeof v === 'string' ? v.split(',') : v); }}
+                input={<OutlinedInput label="Currencies" />}
+                renderValue={(s) => (s as string[]).join(', ')} sx={selectSx}>
+                {availableCurrencies.map((c) => (
+                  <MenuItem key={c} value={c} dense>
+                    <Checkbox size="small" checked={(filters.currencies || []).includes(c)} sx={{ py: 0 }} />
+                    <ListItemText primary={c} primaryTypographyProps={{ fontSize: '0.85rem' }} />
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
           )}
-          {filters.group_by && (
-            <FilterChip
-              label={`Group By: ${filters.group_by}`}
-              onDelete={() => onFilterChange('group_by', undefined)}
-            />
+
+          {showOriginalCurrency && (
+            <FormControl size="small" sx={fcSx}>
+              <InputLabel sx={{ fontSize: '0.82rem' }}>Currency</InputLabel>
+              <Select value={filters.original_currency || 'VND'} label="Currency"
+                onChange={(e) => onFilterChange('original_currency', e.target.value)} sx={selectSx}>
+                {availableCurrencies.map((c) => <MenuItem key={c} value={c}>{c}</MenuItem>)}
+              </Select>
+            </FormControl>
           )}
-          {fromDate && (
-            <FilterChip
-              label={`From: ${fromDate.toLocaleDateString()}`}
-              onDelete={() => onFilterChange('from_date', null)}
-            />
+
+          {showGroupBy && (
+            <FormControl size="small" sx={fcSx}>
+              <InputLabel sx={{ fontSize: '0.82rem' }}>Group By</InputLabel>
+              <Select value={filters.group_by || ''} label="Group By"
+                onChange={(e) => onFilterChange('group_by', e.target.value || undefined)} sx={selectSx}>
+                <MenuItem value=""><em>None</em></MenuItem>
+                <MenuItem value="DAY">Day</MenuItem>
+                <MenuItem value="MONTH">Month</MenuItem>
+                <MenuItem value="YEAR">Year</MenuItem>
+              </Select>
+            </FormControl>
           )}
-          {toDate && (
-            <FilterChip
-              label={`To: ${toDate.toLocaleDateString()}`}
-              onDelete={() => onFilterChange('to_date', null)}
-            />
-          )}
+
+          <Box display="flex" alignItems="center" gap={1}>
+            <DatePicker label="From" value={fromDate} onChange={(v) => onFilterChange('from_date', v)}
+              slotProps={{ textField: { size: 'small', sx: { width: 148, '& .MuiInputBase-root': { height: 40, fontSize: '0.875rem' } } } }} />
+            <Typography variant="body2" sx={{ color: COLORS.text.tertiary }}>→</Typography>
+            <DatePicker label="To" value={toDate} onChange={(v) => onFilterChange('to_date', v)}
+              slotProps={{ textField: { size: 'small', sx: { width: 148, '& .MuiInputBase-root': { height: 40, fontSize: '0.875rem' } } } }} />
+          </Box>
+        </Box>
+      </LocalizationProvider>
+
+      {/* Active chips */}
+      {activeChips.length > 0 && (
+        <Box display="flex" flexWrap="wrap" gap={0.75} mt={1.5}>
+          {activeChips.map((chip) => (
+            <Chip key={chip.label} label={chip.label} size="small" onDelete={chip.onDelete}
+              sx={{ fontSize: '0.75rem', height: 24, bgcolor: 'rgba(79,156,254,0.1)', color: COLORS.text.secondary, fontWeight: 500,
+                '& .MuiChip-deleteIcon': { fontSize: '0.9rem', color: COLORS.text.tertiary } }} />
+          ))}
         </Box>
       )}
-
-      {/* Filter Fields */}
-      <Box display="flex" flexWrap="wrap" gap={1} mb={1}>
-        <Box flex="1 1 150px" minWidth={{ xs: '100%', sm: '150px' }}>
-          {showKind && (
-          <TextField
-            select
-            fullWidth
-            label="Kind"
-            value={filters.kind || ''}
-            onChange={(e) => onFilterChange('kind', e.target.value as ExpenseKind)}
-            size="small"
-            sx={{ '& .MuiInputBase-input': { fontSize: '0.875rem' } }}
-          >
-            <MenuItem value="">All</MenuItem>
-            <MenuItem value="expense">Expense</MenuItem>
-            <MenuItem value="income">Income</MenuItem>
-          </TextField>
-          )}
-        </Box>
-        <Box flex="1 1 150px" minWidth={{ xs: '100%', sm: '150px' }}>
-          {showType && (
-          <TextField
-            select
-            fullWidth
-            label="Type"
-            value={filters.type || ''}
-            onChange={(e) => onFilterChange('type', e.target.value)}
-            size="small"
-            sx={{ '& .MuiInputBase-input': { fontSize: '0.875rem' } }}
-          >
-            <MenuItem value="">All</MenuItem>
-            {availableTypes.map((type) => (
-              <MenuItem key={type} value={type}>
-                {type}
-              </MenuItem>
-            ))}
-          </TextField>
-          )}
-        </Box>
-        <Box flex="1 1 150px" minWidth={{ xs: '100%', sm: '150px' }}>
-          {showCurrencies && (
-          <TextField
-            select
-            fullWidth
-            label="Currencies"
-            value={filters.currencies || []}
-            onChange={(e) => {
-              const value = e.target.value;
-              onFilterChange('currencies', typeof value === 'string' ? value.split(',') : value);
-            }}
-            SelectProps={{
-              multiple: true,
-              renderValue: (selected) => (selected as string[]).join(', '),
-            }}
-            size="small"
-            sx={{ '& .MuiInputBase-input': { fontSize: '0.875rem' } }}
-          >
-            {availableCurrencies.map((currency) => (
-              <MenuItem key={currency} value={currency}>
-                {currency}
-              </MenuItem>
-            ))}
-          </TextField>
-          )}
-        </Box>
-        <Box flex="1 1 150px" minWidth={{ xs: '100%', sm: '150px' }}>
-          {showOriginalCurrency && (
-          <TextField
-            select
-            fullWidth
-            label="Original Currency"
-            value={filters.original_currency || 'VND'}
-            onChange={(e) => onFilterChange('original_currency', e.target.value)}
-            size="small"
-            sx={{ 
-              '& .MuiInputBase-input': { fontSize: '0.875rem' },
-            }}
-          >
-            {availableCurrencies.map((currency) => (
-              <MenuItem key={currency} value={currency}>
-                {currency}
-              </MenuItem>
-            ))}
-          </TextField>
-          )}
-        </Box>
-        <Box flex="1 1 150px" minWidth={{ xs: '100%', sm: '150px' }}>
-          {showGroupBy && (
-          <TextField
-            select
-            fullWidth
-            label="Group By"
-            value={filters.group_by || ''}
-            onChange={(e) => onFilterChange('group_by', e.target.value)}
-            size="small"
-            sx={{ '& .MuiInputBase-input': { fontSize: '0.875rem' } }}
-          >
-            <MenuItem value="">None</MenuItem>
-            <MenuItem value="DAY">Day</MenuItem>
-            <MenuItem value="MONTH">Month</MenuItem>
-            <MenuItem value="YEAR">Year</MenuItem>
-          </TextField>
-          )}
-        </Box>
-        <Box flex="1 1 150px" minWidth={{ xs: '100%', sm: '150px' }}>
-          <LocalizationProvider dateAdapter={AdapterDateFns}>
-            <DatePicker
-              label="From Date"
-              value={fromDate}
-              onChange={(newValue) => onFilterChange('from_date', newValue)}
-              slotProps={{ 
-                textField: { 
-                  fullWidth: true, 
-                  size: 'small',
-                  sx: { '& .MuiInputBase-input': { fontSize: '0.875rem' } },
-                } 
-              }}
-            />
-          </LocalizationProvider>
-        </Box>
-        <Box flex="1 1 150px" minWidth={{ xs: '100%', sm: '150px' }}>
-          <LocalizationProvider dateAdapter={AdapterDateFns}>
-            <DatePicker
-              label="To Date"
-              value={toDate}
-              onChange={(newValue) => onFilterChange('to_date', newValue)}
-              slotProps={{ 
-                textField: { 
-                  fullWidth: true, 
-                  size: 'small',
-                  sx: { '& .MuiInputBase-input': { fontSize: '0.875rem' } },
-                } 
-              }}
-            />
-          </LocalizationProvider>
-        </Box>
-      </Box>
-
-      {/* Action Buttons */}
-      <Box display="flex" gap={1} mt={1.5}>
-        <Button 
-          variant="contained" 
-          size="small" 
-          onClick={onApplyFilters}
-          sx={{ 
-            fontSize: '0.875rem',
-            bgcolor: COLORS.income.main,
-            color: COLORS.background.paper,
-            fontWeight: 600,
-            '&:hover': {
-              bgcolor: COLORS.income.dark,
-            },
-          }}
-        >
-          Apply Filters
-        </Button>
-        <Button 
-          variant="outlined" 
-          size="small" 
-          onClick={onClearFilters}
-          sx={{ fontSize: '0.875rem' }}
-        >
-          Clear All
-        </Button>
-      </Box>
-    </Paper>
+    </Box>
   );
 };
 

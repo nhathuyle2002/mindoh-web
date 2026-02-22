@@ -6,7 +6,7 @@ import type { Expense, ExpenseRequest, ExpenseKind } from '../types/api';
 export type ExpenseFilter = {
   user_id?: number;
   kind?: ExpenseKind;
-  type?: string;
+  types?: string[];  // Filter by multiple types
   currencies?: string[];  // Filter by multiple currencies
   from?: string;
   to?: string;
@@ -16,6 +16,9 @@ export type ExpenseFilter = {
 
 export type ExpenseListResponse = {
   count: number;
+  income_count: number;
+  expense_count: number;
+  by_currency: Record<string, { total_income: number; total_expense: number; total_balance: number }>;
   data: Expense[];
 };
 

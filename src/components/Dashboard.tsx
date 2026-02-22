@@ -13,7 +13,6 @@ import {
   DialogActions,
   Divider,
   Fade,
-  Popover,
   Table,
   TableBody,
   TableCell,
@@ -24,7 +23,7 @@ import {
   Tooltip,
   Container,
 } from '@mui/material';
-import { FilterList, Add, Edit, Delete, WarningAmber, ArrowUpward, ArrowDownward, UnfoldMore } from '@mui/icons-material';
+import { Add, Edit, Delete, WarningAmber, ArrowUpward, ArrowDownward, UnfoldMore } from '@mui/icons-material';
 import { expenseService } from '../services/expenseService';
 import type { ExpenseFilter } from '../services/expenseService';
 import type { Expense } from '../types/api';
@@ -37,10 +36,13 @@ import { formatDateForDisplay, formatDateToYYYYMMDD } from '../common/utils/date
 const Dashboard: React.FC = () => {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [count, setCount] = useState<number>(0);
+  const [incomeCount, setIncomeCount] = useState<number>(0);
+  const [expenseCount, setExpenseCount] = useState<number>(0);
+  const [byCurrency, setByCurrency] = useState<Record<string, { total_income: number; total_expense: number; total_balance: number }>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
-  const [filterAnchorEl, setFilterAnchorEl] = useState<HTMLElement | null>(null);
+  const [filterAnchorEl, setFilterAnchorEl] = useState<HTMLElement | null>(null); // kept for compat
   const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
   const [availableTypes, setAvailableTypes] = useState<string[]>([]);
   const [availableCurrencies, setAvailableCurrencies] = useState<string[]>(['VND', 'USD']);
@@ -53,7 +55,7 @@ const Dashboard: React.FC = () => {
   // Filter states
   const [filters, setFilters] = useState<ExpenseFilter>({
     kind: undefined,
-    type: undefined,
+    types: undefined,
     currencies: undefined,
     from: undefined,
     to: undefined,
@@ -78,10 +80,16 @@ const Dashboard: React.FC = () => {
       const result = await expenseService.getExpenses(params);
       setExpenses(result.data);
       setCount(result.count);
+      setIncomeCount(result.income_count ?? 0);
+      setExpenseCount(result.expense_count ?? 0);
+      setByCurrency(result.by_currency ?? {});
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to fetch expenses');
       setExpenses([]);
       setCount(0);
+      setIncomeCount(0);
+      setExpenseCount(0);
+      setByCurrency({});
     }
     setLoading(false);
   };
@@ -120,7 +128,7 @@ const Dashboard: React.FC = () => {
   const handleApplyFilters = () => {
     const cleanFilters: ExpenseFilter = {};
     if (filters.kind) cleanFilters.kind = filters.kind;
-    if (filters.type) cleanFilters.type = filters.type;
+    if (filters.types && filters.types.length > 0) cleanFilters.types = filters.types;
     if (filters.currencies && filters.currencies.length > 0) cleanFilters.currencies = filters.currencies;
     if (fromDate) cleanFilters.from = formatDateToYYYYMMDD(fromDate);
     if (toDate) cleanFilters.to = formatDateToYYYYMMDD(toDate);
@@ -130,7 +138,7 @@ const Dashboard: React.FC = () => {
   const handleClearFilters = () => {
     setFilters({
       kind: undefined,
-      type: undefined,
+      types: undefined,
       currencies: undefined,
       from: undefined,
       to: undefined,
@@ -155,7 +163,7 @@ const Dashboard: React.FC = () => {
     setSortDir(newDir);
     const cleanFilters: ExpenseFilter = {};
     if (filters.kind) cleanFilters.kind = filters.kind;
-    if (filters.type) cleanFilters.type = filters.type;
+    if (filters.types && filters.types.length > 0) cleanFilters.types = filters.types;
     if (filters.currencies && filters.currencies.length > 0) cleanFilters.currencies = filters.currencies;
     if (fromDate) cleanFilters.from = formatDateToYYYYMMDD(fromDate);
     if (toDate) cleanFilters.to = formatDateToYYYYMMDD(toDate);
@@ -189,7 +197,7 @@ const Dashboard: React.FC = () => {
     setOpen(true);
   };
 
-  const hasActiveFilters = !!(filters.kind || filters.type || (filters.currencies && filters.currencies.length > 0) || fromDate || toDate);
+  const hasActiveFilters = !!(filters.kind || (filters.types && filters.types.length > 0) || (filters.currencies && filters.currencies.length > 0) || fromDate || toDate);
 
   const formatCurrency = (amount: number, currency: string) => {
     const decimals = currency === 'VND' ? 0 : 2;
@@ -258,37 +266,8 @@ const Dashboard: React.FC = () => {
 
       {/* Summary Section removed - use the Summary page for totals */}
 
-      {/* Filter Section */}
-      <Box display="flex" gap={2} mb={2} flexWrap="wrap">
-        <Button 
-          variant="outlined"
-          startIcon={<FilterList />} 
-          onClick={(e) => setFilterAnchorEl(filterAnchorEl ? null : e.currentTarget)}
-          size="small"
-          sx={{ 
-            fontSize: '0.875rem',
-            borderRadius: 2,
-            fontWeight: 600,
-            color: COLORS.text.secondary,
-            borderColor: COLORS.background.border,
-            '&:hover': {
-              borderColor: COLORS.text.tertiary,
-              bgcolor: COLORS.background.hover,
-            },
-          }}
-        >
-          Filters {hasActiveFilters && `(${Object.values(filters).filter(v => v).length})`}
-        </Button>
-      </Box>
-
-      <Popover
-        open={Boolean(filterAnchorEl)}
-        anchorEl={filterAnchorEl}
-        onClose={() => setFilterAnchorEl(null)}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
-        transformOrigin={{ vertical: 'top', horizontal: 'left' }}
-        PaperProps={{ sx: { mt: 1, width: 720, maxWidth: '95vw', borderRadius: 2, boxShadow: '0 8px 32px rgba(0,0,0,0.15)' } }}
-      >
+      {/* Filter Section - always visible, above stats */}
+      <Paper sx={{ mb: 2, borderRadius: 3, boxShadow: '0 2px 12px rgba(0,0,0,0.07)', border: '1px solid', borderColor: 'divider' }} elevation={0}>
         <FilterSection
           filters={filters}
           fromDate={fromDate}
@@ -296,14 +275,37 @@ const Dashboard: React.FC = () => {
           availableTypes={availableTypes}
           availableCurrencies={availableCurrencies}
           onFilterChange={handleFilterChange}
-          onApplyFilters={() => { handleApplyFilters(); setFilterAnchorEl(null); }}
+          onApplyFilters={handleApplyFilters}
           onClearFilters={handleClearFilters}
-          onClose={() => setFilterAnchorEl(null)}
           hasActiveFilters={hasActiveFilters}
           showGroupBy={false}
           showOriginalCurrency={false}
         />
-      </Popover>
+      </Paper>
+
+
+
+      {!loading && Object.keys(byCurrency).length > 0 && (
+        <Box display="flex" flexWrap="wrap" gap={1} mb={2}>
+          {Object.entries(byCurrency).map(([cur, cs]) => {
+            const symbol = CURRENCY_SYMBOLS[cur] || cur;
+            const fmt = (v: number) => new Intl.NumberFormat('en-US', { maximumFractionDigits: cur === 'VND' ? 0 : 2 }).format(Math.abs(v));
+            const positive = cs.total_balance >= 0;
+            return (
+              <Box key={cur} sx={{ display: 'flex', alignItems: 'center', gap: 1, px: 1.5, py: 0.5, borderRadius: 2, bgcolor: 'background.paper', border: '1px solid', borderColor: 'divider' }}>
+                <Typography variant="caption" sx={{ fontWeight: 700, color: COLORS.text.tertiary, textTransform: 'uppercase', letterSpacing: '0.04em', mr: 0.5 }}>{cur}</Typography>
+                <Typography variant="caption" sx={{ color: COLORS.income.main }}>↑ {fmt(cs.total_income)} {symbol}</Typography>
+                <Typography variant="caption" sx={{ color: COLORS.text.tertiary }}>·</Typography>
+                <Typography variant="caption" sx={{ color: COLORS.expense.main }}>↓ {fmt(cs.total_expense)} {symbol}</Typography>
+                <Typography variant="caption" sx={{ color: COLORS.text.tertiary }}>·</Typography>
+                <Typography variant="caption" sx={{ fontWeight: 700, color: positive ? COLORS.income.main : COLORS.expense.main }}>
+                  = {positive ? '+' : '-'}{fmt(cs.total_balance)} {symbol}
+                </Typography>
+              </Box>
+            );
+          })}
+        </Box>
+      )}
 
       <Paper sx={{ p: { xs: 2, sm: 3 }, borderRadius: 2 }} elevation={2}>
         <Box display="flex" alignItems="center" justifyContent="space-between" mb={1}>
@@ -314,6 +316,15 @@ const Dashboard: React.FC = () => {
             {!loading && (
               <Typography variant="body2" sx={{ color: COLORS.text.tertiary }}>
                 {count} {count === 1 ? 'record' : 'records'}
+                {(incomeCount > 0 || expenseCount > 0) && (
+                  <>
+                    {' '}(
+                    <Box component="span" sx={{ color: COLORS.income.main }}>{incomeCount} income</Box>
+                    {', '}
+                    <Box component="span" sx={{ color: COLORS.expense.main }}>{expenseCount} expense</Box>
+                    )
+                  </>
+                )}
               </Typography>
             )}
           </Box>
