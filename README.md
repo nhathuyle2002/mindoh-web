@@ -12,6 +12,17 @@ Frontend for the Mindoh expense tracker, built with React + TypeScript + Vite + 
 - **date-fns** — date utilities
 - **Cloudflare Pages / Workers** — deployment (with SPA routing)
 
+## Features
+
+- **Dashboard** — summary cards with income/expense totals and net balance
+- **Transactions** — paginated, sortable expense list with inline edit/delete
+- **Summary** — time-bucketed grouped view (day / week / month / year)
+- **Email verification** — verify on registration; resend from Settings
+- **Forgot / reset password** — email-based flow; only verified accounts can request reset
+- **Change password** — from Settings while authenticated
+- **Profile update** — name, email, phone, address, birthdate from Settings
+- **User avatar chip** — initials + username in the app bar
+
 ## Project Structure
 
 ```
@@ -24,25 +35,28 @@ mindoh-web/
 │   │   ├── FilterSection.tsx
 │   │   └── SummaryCard.tsx
 │   ├── components/
-│   │   ├── Dashboard.tsx       Overview / summary cards
-│   │   ├── Transactions.tsx    Paginated expense list with sort
-│   │   ├── Summary.tsx         Grouped time-bucket table
-│   │   ├── AddExpense.tsx
-│   │   ├── Layout.tsx          App shell with sidebar nav
+│   │   ├── Dashboard.tsx         Overview / summary cards
+│   │   ├── Transactions.tsx      Paginated expense list with sort
+│   │   ├── Summary.tsx           Grouped time-bucket table
+│   │   ├── AddExpense.tsx        Create / edit expense form
+│   │   ├── Layout.tsx            App shell with sidebar nav + user chip
 │   │   ├── Login.tsx
 │   │   ├── Register.tsx
+│   │   ├── ForgotPassword.tsx    Email-based password reset request
+│   │   ├── ResetPassword.tsx     Token-based password reset form
+│   │   ├── VerifyEmail.tsx       Email verification landing page
 │   │   ├── ProtectedRoute.tsx
-│   │   └── Settings.tsx
+│   │   └── Settings.tsx          Profile, email verification, change password
 │   ├── constants/
 │   ├── contexts/
 │   │   └── AuthContext.tsx
 │   ├── services/
-│   │   ├── api.ts              Axios instance — reads VITE_API_BASE_URL
+│   │   ├── api.ts                Axios instance — reads VITE_API_BASE_URL
 │   │   ├── authService.ts
 │   │   └── expenseService.ts
 │   └── types/
 │       └── api.ts
-├── wrangler.jsonc              Cloudflare Worker config (SPA routing)
+├── wrangler.jsonc                Cloudflare Worker config (SPA routing)
 ├── vite.config.ts
 └── index.html
 ```
