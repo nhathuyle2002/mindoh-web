@@ -30,6 +30,14 @@ export const authService = {
     return response.data;
   },
 
+  async updateMyEmail(email: string): Promise<User> {
+    const token = localStorage.getItem('token');
+    const response = await apiClient.put<User>('/users/me/email', { email }, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    return response.data;
+  },
+
   async deleteUser(userId: number): Promise<void> {
     const token = localStorage.getItem('token');
     await apiClient.delete(`/users/${userId}`, {

@@ -67,16 +67,21 @@ const SectionHeader = ({ icon, title, subtitle }: {
 );
 
 const Settings: React.FC = () => {
-  const { state, updateUser, clearError } = useAuth();
+  const { state, updateUser, updateEmail, clearError } = useAuth();
   const user = state.user;
 
   // Profile fields
   const [name, setName] = useState(user?.name || '');
-  const [email, setEmail] = useState(user?.email || '');
   const [phone, setPhone] = useState(user?.phone || '');
   const [address, setAddress] = useState(user?.address || '');
   const [birthdate, setBirthdate] = useState(user?.birthdate || '');
   const [profileSuccess, setProfileSuccess] = useState(false);
+
+  // Change email
+  const [newEmail, setNewEmail] = useState('');
+  const [emailSuccess, setEmailSuccess] = useState(false);
+  const [emailLoading, setEmailLoading] = useState(false);
+  const [emailError, setEmailError] = useState<string | null>(null);
 
   // Password change fields
   const [currentPassword, setCurrentPassword] = useState('');
@@ -100,8 +105,27 @@ const Settings: React.FC = () => {
   const handleProfileSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setProfileSuccess(false);
-    const ok = await updateUser({ name, email, phone, address, birthdate });
+    const ok = await updateUser({ name, phone, address, birthdate });
     if (ok) setProfileSuccess(true);
+  };
+
+  const handleEmailSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setEmailError(null);
+    setEmailSuccess(false);
+    if (!newEmail) return;
+    try {
+      setEmailLoading(true);
+      const ok = await updateEmail(newEmail);
+      if (ok) {
+        setEmailSuccess(true);
+        setNewEmail('');
+      }
+    } catch {
+      setEmailError('Failed to update email. Please try again.');
+    } finally {
+      setEmailLoading(false);
+    }
   };
 
   const handleResendVerification = async () => {
@@ -288,16 +312,6 @@ const Settings: React.FC = () => {
               InputProps={{ startAdornment: <InputAdornment position="start"><Person fontSize="small" sx={{ color: COLORS.text.quaternary }} /></InputAdornment> }}
             />
             <TextField
-              label="Email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              fullWidth size="small"
-              required
-              disabled={state.loading}
-              InputProps={{ startAdornment: <InputAdornment position="start"><Email fontSize="small" sx={{ color: COLORS.text.quaternary }} /></InputAdornment> }}
-            />
-            <TextField
               label="Phone"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
@@ -337,6 +351,53 @@ const Settings: React.FC = () => {
                 }}
               >
                 {state.loading ? <CircularProgress size={20} sx={{ color: '#fff' }} /> : 'Save Changes'}
+              </Button>
+            </Box>
+          </Box>
+        </Paper>
+
+        {/* ── Change Email ─────────────────────────────────────── */}
+        <Paper sx={{ p: 3, mb: 3, borderRadius: 3, boxShadow: BOX_SHADOWS.card }}>
+          <SectionHeader
+            icon={<Email fontSize="small" />}
+            title="Change Email"
+            subtitle="Enter a new email address — you will need to verify it again"
+          />
+          <Divider sx={{ mb: 3 }} />
+          {emailError && (
+            <Alert severity="error" sx={{ mb: 2 }} onClose={() => setEmailError(null)}>{emailError}</Alert>
+          )}
+          {emailSuccess && (
+            <Alert severity="success" sx={{ mb: 2 }} onClose={() => setEmailSuccess(false)}>
+              Email updated! A verification link has been sent to your new address.
+            </Alert>
+          )}
+          <Box component="form" onSubmit={handleEmailSubmit} sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <TextField
+              label="New Email"
+              type="email"
+              value={newEmail}
+              onChange={(e) => setNewEmail(e.target.value)}
+              fullWidth size="small"
+              required
+              placeholder={user?.email || ''}
+              disabled={emailLoading}
+              InputProps={{ startAdornment: <InputAdornment position="start"><Email fontSize="small" sx={{ color: COLORS.text.quaternary }} /></InputAdornment> }}
+            />
+            <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 0.5 }}>
+              <Button
+                type="submit"
+                variant="outlined"
+                disabled={emailLoading || !newEmail}
+                startIcon={emailLoading ? undefined : <Email fontSize="small" />}
+                sx={{
+                  borderColor: COLORS.income.main,
+                  color: COLORS.income.main,
+                  '&:hover': { borderColor: COLORS.income.dark, bgcolor: COLORS.background.hover },
+                  borderRadius: 2, px: 3,
+                }}
+              >
+                {emailLoading ? <CircularProgress size={20} sx={{ color: COLORS.income.main }} /> : 'Update Email'}
               </Button>
             </Box>
           </Box>

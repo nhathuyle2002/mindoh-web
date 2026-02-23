@@ -77,6 +77,7 @@ interface AuthContextType {
   login: (username: string, password: string) => Promise<void>;
   register: (username: string, email: string, password: string, name?: string) => Promise<boolean>;
   updateUser: (fields: Partial<User>) => Promise<boolean>;
+  updateEmail: (email: string) => Promise<boolean>;
   logout: () => void;
   clearError: () => void;
 }
@@ -160,6 +161,23 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
+  const updateEmail = async (email: string): Promise<boolean> => {
+    if (!state.user) return false;
+    try {
+      dispatch({ type: 'AUTH_START' });
+      const updated = await authService.updateMyEmail(email);
+      localStorage.setItem('user', JSON.stringify(updated));
+      dispatch({ type: 'UPDATE_USER', payload: updated });
+      return true;
+    } catch (error: any) {
+      dispatch({
+        type: 'AUTH_FAILURE',
+        payload: error.response?.data?.error || 'Email update failed',
+      });
+      return false;
+    }
+  };
+
   const logout = () => {
     authService.logout();
     dispatch({ type: 'LOGOUT' });
@@ -175,6 +193,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     login,
     register,
     updateUser,
+    updateEmail,
     logout,
     clearError,
   };
