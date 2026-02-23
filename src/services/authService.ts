@@ -42,6 +42,22 @@ export const authService = {
     localStorage.removeItem('user');
   },
 
+  async forgotPassword(email: string): Promise<void> {
+    await apiClient.post('/forgot-password', { email });
+  },
+
+  async resetPassword(token: string, password: string): Promise<void> {
+    await apiClient.post('/reset-password', { token, password });
+  },
+
+  async verifyEmail(token: string): Promise<void> {
+    await apiClient.get(`/verify-email?token=${token}`);
+  },
+
+  async resendVerification(email: string): Promise<void> {
+    await apiClient.post('/resend-verification', { email });
+  },
+
   getStoredUser(): User | null {
     const user = localStorage.getItem('user');
     return user ? JSON.parse(user) : null;

@@ -122,7 +122,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     } catch (error: any) {
       dispatch({
         type: 'AUTH_FAILURE',
-        payload: error.response?.data?.message || 'Login failed'
+        payload: error.response?.data?.error || error.response?.data?.message || 'Login failed'
       });
     }
   };

@@ -25,8 +25,11 @@ import {
   VisibilityOff,
   Edit,
   AdminPanelSettings,
+  CheckCircle,
+  ErrorOutline,
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
+import { authService } from '../services/authService';
 import { COLORS, BOX_SHADOWS } from '../constants/colors';
 
 const AVATAR_COLORS = [
@@ -84,6 +87,11 @@ const Settings: React.FC = () => {
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [passwordSuccess, setPasswordSuccess] = useState(false);
 
+  // Email verification
+  const [verifyResendLoading, setVerifyResendLoading] = useState(false);
+  const [verifyResendSuccess, setVerifyResendSuccess] = useState(false);
+  const [verifyResendError, setVerifyResendError] = useState<string | null>(null);
+
   useEffect(() => {
     return () => { clearError(); };
   }, []);
@@ -93,6 +101,21 @@ const Settings: React.FC = () => {
     setProfileSuccess(false);
     const ok = await updateUser({ name, email, phone, address, birthdate });
     if (ok) setProfileSuccess(true);
+  };
+
+  const handleResendVerification = async () => {
+    if (!user?.email) return;
+    setVerifyResendLoading(true);
+    setVerifyResendSuccess(false);
+    setVerifyResendError(null);
+    try {
+      await authService.resendVerification(user.email);
+      setVerifyResendSuccess(true);
+    } catch {
+      setVerifyResendError('Failed to send verification email. Please try again.');
+    } finally {
+      setVerifyResendLoading(false);
+    }
   };
 
   const handlePasswordSubmit = async (e: React.FormEvent) => {
@@ -164,6 +187,68 @@ const Settings: React.FC = () => {
               </Box>
             </Box>
           </Box>
+        </Paper>
+
+        {/* ── Email Verification ────────────────────────────────── */}
+        <Paper sx={{ p: 3, mb: 3, borderRadius: 3, boxShadow: BOX_SHADOWS.card }}>
+          <SectionHeader
+            icon={<Email fontSize="small" />}
+            title="Email Verification"
+            subtitle="Verify your email address to unlock all features"
+          />
+          <Divider sx={{ mb: 3 }} />
+          {user?.is_email_verified ? (
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+              <CheckCircle sx={{ color: '#28C76F', fontSize: 20 }} />
+              <Typography variant="body2" sx={{ color: COLORS.text.secondary }}>
+                <strong>{user.email}</strong> is verified.
+              </Typography>
+              <Chip
+                label="Verified"
+                size="small"
+                sx={{ bgcolor: 'rgba(40,199,111,0.12)', color: '#28C76F', fontWeight: 700, fontSize: '0.72rem' }}
+              />
+            </Box>
+          ) : (
+            <Box>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+                <ErrorOutline sx={{ color: '#FF9F43', fontSize: 20 }} />
+                <Typography variant="body2" sx={{ color: COLORS.text.secondary }}>
+                  <strong>{user?.email}</strong> is not yet verified.
+                </Typography>
+                <Chip
+                  label="Not verified"
+                  size="small"
+                  sx={{ bgcolor: 'rgba(255,159,67,0.12)', color: '#FF9F43', fontWeight: 700, fontSize: '0.72rem' }}
+                />
+              </Box>
+              {verifyResendError && (
+                <Alert severity="error" sx={{ mb: 2, borderRadius: 2 }} onClose={() => setVerifyResendError(null)}>
+                  {verifyResendError}
+                </Alert>
+              )}
+              {verifyResendSuccess && (
+                <Alert severity="success" sx={{ mb: 2, borderRadius: 2 }} onClose={() => setVerifyResendSuccess(false)}>
+                  Verification email sent! Check your inbox.
+                </Alert>
+              )}
+              <Button
+                variant="outlined"
+                size="small"
+                disabled={verifyResendLoading}
+                startIcon={verifyResendLoading ? undefined : <Email fontSize="small" />}
+                onClick={handleResendVerification}
+                sx={{
+                  borderColor: '#FF9F43',
+                  color: '#FF9F43',
+                  '&:hover': { borderColor: '#e8872e', bgcolor: 'rgba(255,159,67,0.06)' },
+                  borderRadius: 2,
+                }}
+              >
+                {verifyResendLoading ? <CircularProgress size={18} sx={{ color: '#FF9F43' }} /> : 'Resend verification email'}
+              </Button>
+            </Box>
+          )}
         </Paper>
 
         {/* ── Profile info ─────────────────────────────────────── */}

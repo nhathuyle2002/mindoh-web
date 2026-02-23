@@ -26,11 +26,11 @@ const Login: React.FC = () => {
     }
   }, [state.user, navigate]);
 
-useEffect(() => {
-  return () => {
-    clearError();
-  };
-}, []);
+  useEffect(() => {
+    return () => {
+      clearError();
+    };
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -78,7 +78,11 @@ useEffect(() => {
           </Box>
           <Typography variant="h4" fontWeight={800} sx={{ color: '#1a202c', mb: 0.5 }}>Welcome back</Typography>
           <Typography variant="body2" sx={{ color: '#718096', mb: 4 }}>Sign in to your account to continue</Typography>
-          {state.error && <Alert severity="error" sx={{ mb: 3, borderRadius: 2 }}>{state.error}</Alert>}
+
+          {state.error && (
+            <Alert severity="error" sx={{ mb: 3, borderRadius: 2 }}>{state.error}</Alert>
+          )}
+
           <Box component="form" onSubmit={handleSubmit}>
             <TextField
               margin="normal" required fullWidth label="Username"
@@ -109,10 +113,15 @@ useEffect(() => {
               }}>
               {state.loading ? <CircularProgress size={24} color="inherit" /> : 'Sign In'}
             </Button>
-            <Typography variant="body2" align="center" sx={{ color: '#718096' }}>
-              Don't have an account?{' '}
-              <Link to="/register" style={{ textDecoration: 'none', color: '#28C76F', fontWeight: 600 }}>Sign Up</Link>
-            </Typography>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Typography variant="body2" sx={{ color: '#718096' }}>
+                Don't have an account?{' '}
+                <Link to="/register" style={{ textDecoration: 'none', color: '#28C76F', fontWeight: 600 }}>Sign Up</Link>
+              </Typography>
+              <Link to="/forgot-password" style={{ textDecoration: 'none', color: '#718096', fontSize: '0.875rem' }}>
+                Forgot password?
+              </Link>
+            </Box>
           </Box>
         </Box>
       </Box>
@@ -121,4 +130,3 @@ useEffect(() => {
 };
 
 export default Login;
-

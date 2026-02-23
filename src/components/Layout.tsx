@@ -167,7 +167,29 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             Mindoh
           </Typography>
 
-          {/* Right side: settings + logout */}
+          {/* Right side: user avatar + settings + logout */}
+          <Box
+            onClick={() => navigate('/settings')}
+            sx={{
+              display: 'flex', alignItems: 'center', gap: 1,
+              cursor: 'pointer', borderRadius: 2, px: 1, py: 0.5,
+              '&:hover': { bgcolor: 'rgba(255,255,255,0.08)' },
+              transition: 'background 0.15s',
+            }}
+          >
+            <Avatar sx={{ bgcolor: '#28C76F', width: 28, height: 28, fontSize: '0.75rem', fontWeight: 700, color: '#fff' }}>
+              {(state.user?.name?.[0] || state.user?.username?.[0] || '?').toUpperCase()}
+            </Avatar>
+            <Box sx={{ display: { xs: 'none', sm: 'block' }, lineHeight: 1 }}>
+              <Typography variant="body2" fontWeight={700} sx={{ color: '#fff', fontSize: '0.82rem', lineHeight: 1.25 }}>
+                {state.user?.name || state.user?.username}
+              </Typography>
+              <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.7rem', lineHeight: 1 }}>
+                @{state.user?.username}
+              </Typography>
+            </Box>
+          </Box>
+
           <IconButton size="small" onClick={() => navigate('/settings')}
             sx={{ color: 'rgba(255,255,255,0.65)', '&:hover': { color: '#a3ffcb' } }}>
             <SettingsIcon fontSize="small" />

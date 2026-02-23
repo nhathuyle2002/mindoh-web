@@ -19,6 +19,7 @@ const Register: React.FC = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [name, setName] = useState('');
   const [validationError, setValidationError] = useState('');
+  const [registered, setRegistered] = useState(false);
   const { state, register, clearError } = useAuth();
   const navigate = useNavigate();
 
@@ -51,10 +52,28 @@ useEffect(() => {
     if (username && email && password) {
       const success = await register(username, email, password, name || undefined);
       if (success) {
-        navigate('/login');
+        setRegistered(true);
       }
     }
   };
+
+  if (registered) {
+    return (
+      <Box sx={{ display: 'flex', minHeight: '100vh', alignItems: 'center', justifyContent: 'center', background: '#f4f6f9', px: 3 }}>
+        <Box sx={{ width: '100%', maxWidth: 420, textAlign: 'center' }}>
+          <Box component="img" src="/favicon.svg" alt="logo" sx={{ width: 56, height: 56, mb: 2 }} />
+          <Typography variant="h4" fontWeight={800} sx={{ color: '#1a202c', mb: 1 }}>Check your email</Typography>
+          <Typography variant="body1" sx={{ color: '#718096', mb: 3 }}>
+            We sent a verification link to your email address. Click it to activate your account.
+          </Typography>
+          <Typography variant="body2" sx={{ color: '#718096' }}>
+            Already verified?{' '}
+            <Link to="/login" style={{ color: '#28C76F', fontWeight: 600, textDecoration: 'none' }}>Sign in</Link>
+          </Typography>
+        </Box>
+      </Box>
+    );
+  }
 
   return (
     <Container maxWidth="sm">

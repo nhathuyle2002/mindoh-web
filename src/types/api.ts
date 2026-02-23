@@ -3,6 +3,7 @@ export interface User {
   id: number;
   username: string;
   email: string;
+  is_email_verified: boolean;
   name?: string;
   phone?: string;
   address?: string;
