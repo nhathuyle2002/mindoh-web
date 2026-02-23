@@ -58,6 +58,13 @@ export const authService = {
     await apiClient.post('/resend-verification', { email });
   },
 
+  async changePassword(currentPassword: string, newPassword: string): Promise<void> {
+    const token = localStorage.getItem('token');
+    await apiClient.post('/users/change-password', { current_password: currentPassword, new_password: newPassword }, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+  },
+
   getStoredUser(): User | null {
     const user = localStorage.getItem('user');
     return user ? JSON.parse(user) : null;

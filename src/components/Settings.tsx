@@ -86,6 +86,7 @@ const Settings: React.FC = () => {
   const [showNew, setShowNew] = useState(false);
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [passwordSuccess, setPasswordSuccess] = useState(false);
+  const [passwordLoading, setPasswordLoading] = useState(false);
 
   // Email verification
   const [verifyResendLoading, setVerifyResendLoading] = useState(false);
@@ -130,9 +131,17 @@ const Settings: React.FC = () => {
       setPasswordError('Passwords do not match.');
       return;
     }
-    // Wire to backend when endpoint is available
-    setPasswordSuccess(true);
-    setCurrentPassword(''); setNewPassword(''); setConfirmPassword('');
+    try {
+      setPasswordLoading(true);
+      await authService.changePassword(currentPassword, newPassword);
+      setPasswordSuccess(true);
+      setCurrentPassword(''); setNewPassword(''); setConfirmPassword('');
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error;
+      setPasswordError(msg || 'Failed to change password. Please try again.');
+    } finally {
+      setPasswordLoading(false);
+    }
   };
 
   const displayName = user?.name || user?.username || '?';
@@ -403,7 +412,8 @@ const Settings: React.FC = () => {
               <Button
                 type="submit"
                 variant="outlined"
-                startIcon={<Lock fontSize="small" />}
+                disabled={passwordLoading}
+                startIcon={passwordLoading ? undefined : <Lock fontSize="small" />}
                 sx={{
                   borderColor: COLORS.income.main,
                   color: COLORS.income.main,
@@ -411,7 +421,7 @@ const Settings: React.FC = () => {
                   borderRadius: 2, px: 3,
                 }}
               >
-                Update Password
+                {passwordLoading ? <CircularProgress size={20} sx={{ color: COLORS.income.main }} /> : 'Update Password'}
               </Button>
             </Box>
           </Box>
