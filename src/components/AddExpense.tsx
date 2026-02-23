@@ -17,7 +17,6 @@ import { LocalizationProvider, DatePicker } from '@mui/x-date-pickers';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { expenseService } from '../services/expenseService';
 import type { ExpenseRequest, Expense } from '../types/api';
-import { useAuth } from '../contexts/AuthContext';
 import { CURRENCIES } from '../constants/currencies';
 import { EXPENSE_KINDS, EXPENSE_RESOURCES } from '../constants/expense';
 import { COLORS, BOX_SHADOWS } from '../constants/colors';
@@ -30,11 +29,7 @@ interface AddExpenseProps {
 }
 
 const AddExpense: React.FC<AddExpenseProps> = ({ expense, onExpenseAdded, onClose }) => {
-  const { state } = useAuth();
-  const userId = state.user?.id || 0;
-
   const [formData, setFormData] = useState<ExpenseRequest>({
-    user_id: userId,
     amount: expense?.amount || 0,
     description: expense?.description || '',
     kind: expense?.kind || 'expense',
@@ -52,7 +47,6 @@ const AddExpense: React.FC<AddExpenseProps> = ({ expense, onExpenseAdded, onClos
   useEffect(() => {
     if (expense) {
       setFormData({
-        user_id: expense.user_id,
         amount: Math.abs(expense.amount), // Always show positive in UI
         description: expense.description || '',
         kind: expense.kind,
@@ -63,7 +57,6 @@ const AddExpense: React.FC<AddExpenseProps> = ({ expense, onExpenseAdded, onClos
       });
     } else {
       setFormData({
-        user_id: userId,
         amount: 0,
         description: '',
         kind: 'expense',
@@ -105,7 +98,6 @@ const AddExpense: React.FC<AddExpenseProps> = ({ expense, onExpenseAdded, onClos
       const expenseData = { 
         ...formData,
         amount: amount,
-        user_id: userId,
         type: formData.type.trim().toLowerCase(),
         date: dateStr
       };
@@ -120,7 +112,6 @@ const AddExpense: React.FC<AddExpenseProps> = ({ expense, onExpenseAdded, onClos
       
       setSuccess(true);
       setFormData({
-        user_id: userId,
         amount: 0,
         description: '',
         kind: 'expense',

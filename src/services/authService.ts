@@ -14,17 +14,17 @@ export const authService = {
     return response.data;
   },
 
-  async getUser(userId: number): Promise<User> {
+  async getMe(): Promise<User> {
     const token = localStorage.getItem('token');
-    const response = await apiClient.get<User>(`/users/${userId}`, {
+    const response = await apiClient.get<User>('/users/me', {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     });
     return response.data;
   },
 
-  async updateUser(userId: number, userData: Partial<User>): Promise<User> {
+  async updateMe(userData: Partial<User>): Promise<User> {
     const token = localStorage.getItem('token');
-    const response = await apiClient.put<User>(`/users/${userId}`, userData, {
+    const response = await apiClient.put<User>('/users/me', userData, {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     });
     return response.data;

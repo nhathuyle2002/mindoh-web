@@ -1,6 +1,5 @@
 // Type definitions for API responses
 export interface User {
-  id: number;
   username: string;
   email: string;
   is_email_verified: boolean;
@@ -48,7 +47,7 @@ export interface Expense {
 }
 
 export interface ExpenseRequest {
-  user_id: number;
+  user_id?: number;
   amount: number;
   currency: string;
   kind: ExpenseKind;

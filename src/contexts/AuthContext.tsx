@@ -147,7 +147,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     if (!state.user) return false;
     try {
       dispatch({ type: 'AUTH_START' });
-      const updated = await authService.updateUser(state.user.id, fields);
+      const updated = await authService.updateMe(fields);
       localStorage.setItem('user', JSON.stringify(updated));
       dispatch({ type: 'UPDATE_USER', payload: updated });
       return true;
