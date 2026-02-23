@@ -1,69 +1,102 @@
-# React + TypeScript + Vite
+# mindoh-web
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Frontend for the Mindoh expense tracker, built with React + TypeScript + Vite + MUI.
 
-Currently, two official plugins are available:
+## Tech Stack
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- **React 19** + **TypeScript**
+- **Vite** — build tool
+- **MUI v5** — UI components
+- **Axios** — API client
+- **React Router v7** — client-side routing
+- **date-fns** — date utilities
+- **Cloudflare Pages / Workers** — deployment (with SPA routing)
 
-## Expanding the ESLint configuration
+## Project Structure
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default tseslint.config([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      ...tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      ...tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      ...tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```
+mindoh-web/
+├── public/
+│   └── favicon.svg
+├── src/
+│   ├── common/
+│   │   ├── FilterChip.tsx
+│   │   ├── FilterSection.tsx
+│   │   └── SummaryCard.tsx
+│   ├── components/
+│   │   ├── Dashboard.tsx       Overview / summary cards
+│   │   ├── Transactions.tsx    Paginated expense list with sort
+│   │   ├── Summary.tsx         Grouped time-bucket table
+│   │   ├── AddExpense.tsx
+│   │   ├── Layout.tsx          App shell with sidebar nav
+│   │   ├── Login.tsx
+│   │   ├── Register.tsx
+│   │   ├── ProtectedRoute.tsx
+│   │   └── Settings.tsx
+│   ├── constants/
+│   ├── contexts/
+│   │   └── AuthContext.tsx
+│   ├── services/
+│   │   ├── api.ts              Axios instance — reads VITE_API_BASE_URL
+│   │   ├── authService.ts
+│   │   └── expenseService.ts
+│   └── types/
+│       └── api.ts
+├── wrangler.jsonc              Cloudflare Worker config (SPA routing)
+├── vite.config.ts
+└── index.html
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## Test Account
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+A pre-seeded account is available for testing against the production backend:
 
-export default tseslint.config([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+| Field | Value |
+|---|---|
+| Username | `test111` |
+| Password | `nvmQF6F2scnn..u` |
+
+## Local Development
+
+```sh
+git clone https://github.com/nhathuyle2002/mindoh-web
+cd mindoh-web
+npm install
+npm run dev
 ```
+
+App: http://localhost:5173  
+Requires the backend running at http://localhost:8080.
+
+## Environment Variables
+
+| Variable | Description |
+|---|---|
+| VITE_API_BASE_URL | Backend API base URL |
+
+Create `.env` for local dev:
+```
+VITE_API_BASE_URL=http://localhost:8080/api
+```
+
+Production (`.env.production`):
+```
+VITE_API_BASE_URL=https://mindoh-service-production.up.railway.app/api
+```
+
+## Build
+
+```sh
+npm run build
+# output → dist/
+```
+
+## Deployment (Cloudflare Pages / Workers)
+
+The app is deployed as a Cloudflare Worker serving static assets.
+
+- `wrangler.jsonc` sets `not_found_handling: "single-page-application"` so all routes fall through to `index.html` — no `_redirects` file needed
+- Cloudflare auto-deploys on every push to `main` via the Git integration dashboard
+- Custom domain: https://mindoh.wannadev.id.vn
+
+No GitHub Actions workflow is required — Cloudflare handles the full build and deploy pipeline.
